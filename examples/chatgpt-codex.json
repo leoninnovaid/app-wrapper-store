@@ -1,0 +1,22 @@
+{
+  "name": "ChatGPT Codex",
+  "description": "OpenAI's ChatGPT - AI-powered assistant on Android",
+  "url": "https://chat.openai.com",
+  "icon": "https://upload.wikimedia.org/wikipedia/commons/0/04/ChatGPT_logo.svg",
+  "theme": {
+    "primaryColor": "#10a37f",
+    "accentColor": "#ffffff"
+  },
+  "features": {
+    "enablePushNotifications": false,
+    "enableOfflineMode": false,
+    "enableNativeSharing": true,
+    "enableDeepLinking": false
+  },
+  "metadata": {
+    "originalPlatform": "iOS",
+    "category": "Productivity",
+    "tags": ["AI", "ChatGPT", "Assistant", "Coding"],
+    "version": "1.0.0"
+  }
+}
