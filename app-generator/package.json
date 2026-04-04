@@ -1,0 +1,1 @@
+{\n  "dependencies": {\n    "expo-cli": "latest",\n    "child-process": "latest",\n    "logging": "latest"\n  }\n}
