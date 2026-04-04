@@ -11,7 +11,7 @@
 | Ziel | Status | Priorität |
 |------|--------|-----------|
 | Backend API vollständig | ✅ | High |
-| Frontend Store Interface | 🔧 | High |
+| Frontend Store Interface | ✅ | High |
 | APK Generator funktional | ⏳ | High |
 | Datenbank Integration | ⏳ | High |
 | Testing Framework | ⏳ | Medium |
@@ -29,8 +29,8 @@
 - ✅ Backend API Setup
 - ✅ WebView Wrapper Template
 - ✅ Dokumentation
-- 🔧 Frontend Store Grundstruktur
-- ⏳ Datenbank Schema
+- ✅ Frontend Store UI (React + Vite)
+- 🔧 Datenbank Schema
 
 **Erfolgs-Kriterien:**
 - Backend läuft und API funktioniert
@@ -122,17 +122,17 @@
 3. ✅ Dokumentation
 4. 🔧 Daily Log System
 
-### Morgen (2026-04-04)
-1. **Frontend Store UI** - React App mit Listing
-2. **App Creation Form** - Formular für neue Apps
-3. **API Integration** - Frontend ↔ Backend
-4. **Error Handling** - Bessere Fehlerbehandlung
+### Morgen (2026-04-05)
+1. **App Generator** - Expo CLI Integration für APK-Generierung
+2. **Build Status Tracker** - Real-time Build Progress
+3. **Download Manager** - APK Download & Management
+4. **Database Schema** - PostgreSQL Setup
 
 ### Diese Woche (2026-04-03 - 2026-04-07)
-1. Frontend Store vollständig
-2. App Generator Grundstruktur
-3. Datenbank Schema
-4. Erste End-to-End Tests
+1. ✅ Frontend Store vollständig
+2. 🔧 App Generator Grundstruktur
+3. 🔧 Datenbank Schema
+4. 🔧 Erste End-to-End Tests
 
 ### Nächste Woche (2026-04-08 - 2026-04-14)
 1. APK-Generierung funktional

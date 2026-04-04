@@ -17,12 +17,12 @@ Detailliertes Tracking aller Aufgaben mit Zeitstempeln und Status.
 - [x] GitHub Setup | ✅ 2026-04-03 18:19 | Repo gepusht
 - [x] Daily Log System | ✅ 2026-04-03 18:20 | Protokoll-System
 
-#### Phase 2: Frontend Store (Geplant)
-- [ ] React App Setup | ⏳ | Vite + TypeScript
-- [ ] App Listing Component | ⏳ | Zeige alle Apps
-- [ ] App Creation Form | ⏳ | Formular für neue Apps
-- [ ] Build Status Tracker | ⏳ | Real-time Status
-- [ ] Download Manager | ⏳ | APK Download
+#### Phase 2: Frontend Store (In Progress)
+- [x] React App Setup | ✅ 2026-04-04 19:30 | Vite + TypeScript
+- [x] App Listing Component | ✅ 2026-04-04 20:10 | Zeige alle Apps mit Search
+- [x] App Creation Form | ✅ 2026-04-04 20:00 | Vollständiges Formular
+- [ ] Build Status Tracker | 🔧 | Real-time Status
+- [ ] Download Manager | 🔧 | APK Download
 
 #### Phase 3: App Generator (Geplant)
 - [ ] Expo CLI Integration | ⏳ | APK-Generierung
@@ -71,11 +71,11 @@ Detailliertes Tracking aller Aufgaben mit Zeitstempeln und Status.
 | Kategorie | Abgeschlossen | Gesamt | % |
 |-----------|---------------|--------|---|
 | Setup | 7 | 7 | 100% |
-| Frontend | 0 | 5 | 0% |
+| Frontend | 3 | 5 | 60% |
 | App Generator | 0 | 4 | 0% |
 | Datenbank | 0 | 4 | 0% |
 | Testing | 0 | 4 | 0% |
-| **Gesamt** | **7** | **28** | **25%** |
+| **Gesamt** | **10** | **28** | **36%** |
 
 ---
 
