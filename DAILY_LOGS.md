@@ -71,3 +71,56 @@
 2. Add source/update frontend screens.
 3. Expand regression tests to full end-to-end flows.
 4. Integrate signed artifact publishing in release lane.
+
+---
+
+## 2026-04-09 (Alignment + Saferails pass)
+
+**Focus:** Remove repo/documentation misalignment and implement missing guardrails.
+
+### Completed changes
+
+- Rewrote `README.md`, `docs/ARCHITECTURE.md`, and `docs/CONTRIBUTING.md` to match real module layout and commands.
+- Added PR checklist template at `.github/pull_request_template.md`.
+- Added `docs/SAFERAILS.md` with runtime, CI, and process guardrail definitions.
+- Added `docs/FUTURE_RESEARCH_BACKLOG.md` to convert research themes into scoped work.
+- Added backend request-size and string-length guardrails.
+- Added backend build concurrency guard to block overlapping builds per app.
+- Extended backend integration tests for new guardrail behaviors.
+
+### Failures observed
+
+- Documentation drift (outdated setup commands, stale architecture claims, encoding artifacts).
+- Build endpoint allowed concurrent build requests for the same app.
+- API accepted unbounded string payload lengths for key fields.
+
+### Root causes
+
+- Earlier rapid implementation cycles prioritized feature delivery over doc consistency.
+- No explicit concurrency gate in build trigger route.
+- Validation logic checked presence/type but not size constraints.
+
+### Fixes applied
+
+- Introduced docs refresh and contributor template guardrails.
+- Added `getActiveBuildForApp()` repository query + `CONFLICT` response path.
+- Added `express.json({ limit: '256kb' })` and bounded field validation for app/source inputs.
+
+### Verification evidence
+
+- Backend: `npm run build` and `npm test` pass with new tests.
+- Frontend: `npm run lint`, `npm run build`, `npm test` pass.
+- App generator: `npm run build` pass.
+- Manual API debug confirms blocked overlapping builds and detailed readiness errors.
+
+### Prevention actions
+
+- Added dedicated saferail documentation and PR checklist.
+- Added task tracker items for ongoing adapter hardening and policy checks.
+- Established research backlog cadence to reduce future architecture drift.
+
+### Next actions
+
+1. Execute R1/R2 research backlog into concrete adapter and verification implementation tasks.
+2. Add CI policy checks for target SDK and release artifact type.
+3. Add e2e tests for failure visibility across create/source/update/build flow.

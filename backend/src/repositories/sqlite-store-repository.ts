@@ -254,6 +254,16 @@ export class SqliteStoreRepository {
     return rows.map(mapBuildRow);
   }
 
+  async getActiveBuildForApp(appId: string): Promise<Build | null> {
+    const db = await getDatabase();
+    const row = await db.get<PersistedBuildRow>(
+      `SELECT * FROM builds WHERE appId = ? AND status = 'building' ORDER BY datetime(createdAt) DESC LIMIT 1`,
+      appId,
+    );
+
+    return row ? mapBuildRow(row) : null;
+  }
+
   async addBuildLog(buildId: string, level: BuildLog['level'], message: string, details?: string): Promise<BuildLog> {
     const db = await getDatabase();
     const id = uuidv4();

@@ -118,4 +118,50 @@ describe('Backend API contracts', () => {
       platform: 'android',
     });
   });
+
+  it('rejects starting a second build while one is already running', async () => {
+    const createResponse = await request(app).post('/api/apps').send({
+      name: 'Concurrency Guard App',
+      description: 'Prevent overlapping builds',
+      url: 'https://example.net',
+      features: {
+        packaging: {
+          strategy: 'webview',
+          distribution: 'local-sideload',
+          preferredArtifact: 'apk',
+          readiness: {
+            httpsEnabled: true,
+            signingKeyReady: true,
+          },
+        },
+      },
+    });
+
+    const appId = createResponse.body.id as string;
+    const firstBuild = await request(app).post(`/api/apps/${appId}/build`).send({ platform: 'android' });
+    expect(firstBuild.status).toBe(201);
+
+    const secondBuild = await request(app).post(`/api/apps/${appId}/build`).send({ platform: 'android' });
+    expect(secondBuild.status).toBe(409);
+    expect(secondBuild.body).toMatchObject({
+      code: 'CONFLICT',
+      details: {
+        appId,
+      },
+    });
+  });
+
+  it('rejects app names longer than guardrail limit', async () => {
+    const response = await request(app).post('/api/apps').send({
+      name: 'x'.repeat(121),
+      description: 'Too long name should fail',
+      url: 'https://example.com',
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      code: 'VALIDATION_ERROR',
+    });
+    expect(String(response.body.message)).toContain('at most 120');
+  });
 });

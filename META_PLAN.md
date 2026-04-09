@@ -79,6 +79,21 @@ Acceptance gates:
 - No open P0/P1 defects for release candidate.
 - Release checklist and daily logs are updated for each stabilization cycle.
 
+### Alignment and Saferail Sprint (2026-04-09 to 2026-04-12) - Repo consistency and risk reduction
+
+- Refresh core docs (`README`, `ARCHITECTURE`, `CONTRIBUTING`) to match actual code and commands.
+- Add contributor/process guardrails via PR template and dedicated saferail guide.
+- Introduce API-level guardrails for oversized payloads and field-length validation.
+- Introduce build concurrency protection to prevent overlapping build states.
+- Publish future research backlog to turn open questions into scoped implementation tasks.
+
+Acceptance gates:
+
+- Core docs are accurate, readable, and free from encoding artifacts.
+- Build trigger returns deterministic `CONFLICT` for overlapping app builds.
+- Input guardrails reject over-limit payload fields with validation errors.
+- Research backlog and task tracker are synchronized with next implementation steps.
+
 ## Public interface commitments
 
 - `ErrorScope`: `global | create-app | load-apps | build-app | delete-app | source-validate | update-check | release`

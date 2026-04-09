@@ -1,231 +1,114 @@
-# App Wrapper Store - Architecture
+# Architecture
 
-## Overview
+## System Overview
 
-App Wrapper Store is a modular system for creating native-looking Android and iOS apps from websites. The architecture consists of four main components:
+App Wrapper Store is a modular monolith with three runtime surfaces:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Frontend Store                           │
-│              (Web Interface for Users)                      │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Backend API                              │
-│        (App Management & Build Orchestration)               │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-        ┌────────────┴────────────┐
-        ▼                         ▼
-┌──────────────────┐    ┌──────────────────┐
-│  App Generator   │    │ Wrapper Template │
-│ (APK/IPA Build)  │    │  (React Native)  │
-└──────────────────┘    └──────────────────┘
-```
+1. Frontend Store (React)
+2. Backend API (Express + SQLite)
+3. Wrapper/Build tooling (app-generator + wrapper-template)
 
-## Components
+The backend is intentionally monolithic but split by clear contracts:
 
-### 1. Backend API (`/backend`)
+- API routes and middleware
+- persistence repository
+- source adapters
+- update/build readiness services
 
-**Purpose:** Manage app configurations and orchestrate builds
+## Runtime Components
 
-**Key Responsibilities:**
-- Store and retrieve app configurations
-- Trigger build processes
-- Track build status
-- Provide REST API for frontend
+### Frontend (`/frontend`)
 
-**Technology Stack:**
-- Express.js (HTTP server)
-- Node.js (Runtime)
-- TypeScript (Type safety)
+Responsibilities:
 
-**API Endpoints:**
+- Create and manage app definitions
+- Surface all backend errors in UI (global + inline)
+- Trigger and inspect build lifecycle
+- Collect packaging/readiness configuration
 
-```
-POST   /api/apps              # Create app
-GET    /api/apps              # List apps
-GET    /api/apps/:id          # Get app details
-PUT    /api/apps/:id          # Update app
-DELETE /api/apps/:id          # Delete app
-POST   /api/apps/:id/build    # Trigger build
-GET    /api/builds/:buildId   # Get build status
-GET    /api/apps/:id/builds   # Get app builds
-```
+Key modules:
 
-### 2. Frontend Store (`/frontend`)
+- `src/store/appStore.ts`: app + error state
+- `src/components/GlobalErrorBanner.tsx`
+- `src/components/InlineError.tsx`
+- `src/components/CreateAppForm.tsx`
 
-**Purpose:** User interface for browsing and creating apps
+### Backend (`/backend`)
 
-**Key Features:**
-- App catalog with search/filter
-- App creation wizard
-- Build status tracking
-- Download management
+Responsibilities:
 
-**Technology Stack:**
-- React (UI framework)
-- TypeScript (Type safety)
-- Tailwind CSS (Styling)
+- App CRUD APIs
+- Source validation and source attachment APIs
+- Build orchestration and build log APIs
+- Update-check pipeline through adapters
+- Error normalization and trace IDs
 
-### 3. App Generator (`/app-generator`)
+Key modules:
 
-**Purpose:** Automate APK and IPA generation
+- `src/index.ts`: route composition and error middleware
+- `src/repositories/sqlite-store-repository.ts`: persistence adapter
+- `src/services/build-readiness.ts`: APK build preflight guardrails
+- `src/services/update-service.ts`: source update logic
+- `src/adapters/*`: source-specific integrations
 
-**Key Responsibilities:**
-- Generate APK files from configurations
-- Generate IPA files (iOS)
-- Sign and optimize builds
-- Manage build artifacts
+### Build Tooling
 
-**Technology Stack:**
-- Node.js scripts
-- Expo CLI (for React Native builds)
-- Android SDK / Xcode (for compilation)
+- `app-generator`: worker-side helper for build queue actions.
+- `wrapper-template`: React Native/Expo wrapper base with Fastlane scaffolding.
 
-**Build Process:**
+## Data Model (Current)
 
-```
-1. Fetch app configuration from Backend
-2. Clone wrapper template
-3. Inject configuration (env vars, assets)
-4. Build APK/IPA using Expo
-5. Sign the build
-6. Upload to storage
-7. Return download URL
+Persisted entities:
+
+- `apps`
+- `builds`
+- `build_logs`
+- `app_sources`
+
+Storage backend:
+
+- SQLite (`backend/data/*.sqlite`)
+- Repository pattern isolates DB access for future PostgreSQL migration.
+
+## API Conventions
+
+### Error Contract
+
+Every handled API error returns:
+
+```json
+{
+  "code": "VALIDATION_ERROR",
+  "message": "...",
+  "details": {},
+  "traceId": "..."
+}
 ```
 
-### 4. Wrapper Template (`/wrapper-template`)
+### Build Guardrail Contract
 
-**Purpose:** React Native app that displays websites in WebView
+Android build endpoint (`POST /api/apps/:id/build`) applies:
 
-**Key Features:**
-- WebView-based URL loading
-- Configuration injection
-- Native feature access (sharing, notifications)
-- Responsive design
+1. Concurrency guard (no parallel active build per app)
+2. Readiness guard (packaging prerequisites)
 
-**Technology Stack:**
-- React Native (Mobile framework)
-- Expo (Build tooling)
-- WebView (Web content display)
+Failures are explicit and machine-readable (`CONFLICT`, `APK_READINESS_FAILED`).
 
-**Configuration:**
+## Quality Gates
 
-```typescript
-// Environment variables injected at build time
-EXPO_PUBLIC_APP_URL           # URL to load
-EXPO_PUBLIC_APP_NAME          # App display name
-EXPO_PUBLIC_PRIMARY_COLOR     # Theme color
-EXPO_PUBLIC_ICON_URL          # App icon
-```
+CI workflow (`.github/workflows/ci.yml`) enforces:
 
-## Data Flow
+- Frontend: lint + build + test
+- Backend: build + test
+- App generator: build
 
-### Creating an App
+Release dry-run (`.github/workflows/release.yml`) enforces:
 
-```
-1. User fills form in Frontend Store
-   ↓
-2. POST /api/apps (Backend)
-   ↓
-3. Backend stores configuration
-   ↓
-4. Returns app ID to frontend
-   ↓
-5. User clicks "Build APK"
-   ↓
-6. POST /api/apps/:id/build (Backend)
-   ↓
-7. Backend triggers App Generator
-   ↓
-8. App Generator clones template
-   ↓
-9. Injects configuration
-   ↓
-10. Builds APK
-   ↓
-11. Uploads to storage
-   ↓
-12. Backend updates build status
-   ↓
-13. Frontend polls for status
-   ↓
-14. Download link becomes available
-```
+- Fastlane Android dry-run lane invocation on tags/manual dispatch.
 
-## Security Considerations
+## Near-Term Architecture Priorities
 
-### WebView Security
-
-- **URL Validation:** Only allow HTTPS URLs
-- **CSP Headers:** Implement Content Security Policy
-- **JavaScript Isolation:** Limit injected scripts
-- **Cookie Management:** Secure cookie handling
-
-### Build Security
-
-- **Code Signing:** Sign all APK/IPA files
-- **No Secrets in Code:** Use environment variables
-- **Dependency Scanning:** Regular security audits
-- **Build Isolation:** Separate build environments
-
-### Data Privacy
-
-- **No Tracking:** No analytics or user tracking
-- **Local Storage:** User data stays on device
-- **No Telemetry:** No data collection
-- **Open Source:** Code is publicly auditable
-
-## Scalability
-
-### Horizontal Scaling
-
-- **Stateless Backend:** Can run multiple instances
-- **Distributed Build Queue:** Multiple build workers
-- **Shared Storage:** S3 or similar for build artifacts
-- **Load Balancing:** Distribute requests
-
-### Database
-
-- **Current:** In-memory (development)
-- **Production:** PostgreSQL or MongoDB
-- **Caching:** Redis for build status
-
-## Deployment
-
-### Development
-
-```bash
-# Terminal 1: Backend
-cd backend && npm install && npm run dev
-
-# Terminal 2: Frontend
-cd frontend && npm install && npm start
-
-# Terminal 3: App Generator
-cd app-generator && npm install && npm run dev
-```
-
-### Production
-
-- **Backend:** Docker container on cloud (AWS, GCP, Azure)
-- **Frontend:** Static hosting (Vercel, Netlify, GitHub Pages)
-- **App Generator:** Serverless functions or dedicated workers
-- **Storage:** S3 or cloud storage for builds
-
-## Future Enhancements
-
-- [ ] Push notifications support
-- [ ] Offline mode with service workers
-- [ ] Advanced customization (CSS injection, etc.)
-- [ ] App analytics (privacy-focused)
-- [ ] Community app sharing
-- [ ] Version management
-- [ ] Automated updates
-- [ ] Multiple language support
-
-## Contributing
-
-See CONTRIBUTING.md for guidelines on contributing to this architecture.
+1. Replace scaffolded adapters (F-Droid/GitLab/custom) with production parsers.
+2. Persist artifact metadata and storage URLs for real download lifecycle.
+3. Add end-to-end flow tests across app -> source -> update -> build.
+4. Introduce signed artifact verification and stricter release gates.

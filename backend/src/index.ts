@@ -73,14 +73,48 @@ function asyncHandler(handler: AsyncRoute) {
   };
 }
 
-function requireString(value: unknown, fieldName: string): string {
+interface StringGuardOptions {
+  minLength?: number;
+  maxLength?: number;
+}
+
+function requireString(value: unknown, fieldName: string, options?: StringGuardOptions): string {
+  const minLength = options?.minLength ?? 1;
+  const maxLength = options?.maxLength;
+
+  if (typeof value !== 'string') {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} must be a string`);
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length < minLength) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} is required`);
+  }
+
+  if (maxLength !== undefined && trimmed.length > maxLength) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} must be at most ${maxLength} characters long`);
+  }
+
+  return trimmed;
+}
+
+function optionalString(value: unknown, fieldName: string, options?: Pick<StringGuardOptions, 'maxLength'>): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
   if (typeof value !== 'string') {
     throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} must be a string`);
   }
 
   const trimmed = value.trim();
   if (!trimmed) {
-    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} is required`);
+    return undefined;
+  }
+
+  const maxLength = options?.maxLength;
+  if (maxLength !== undefined && trimmed.length > maxLength) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} must be at most ${maxLength} characters long`);
   }
 
   return trimmed;
@@ -150,7 +184,8 @@ export function createServer() {
   const app = express();
 
   app.use(cors());
-  app.use(express.json());
+  // Guardrail: keep request bodies bounded to reduce accidental or abusive oversized payloads.
+  app.use(express.json({ limit: '256kb' }));
   app.use(requestContextMiddleware);
 
   app.get('/api/health', (_req, res) => {
@@ -163,9 +198,9 @@ export function createServer() {
   app.post(
     '/api/apps',
     asyncHandler(async (req, res) => {
-      const name = requireString(req.body.name, 'name');
-      const description = requireString(req.body.description, 'description');
-      const url = requireString(req.body.url, 'url');
+      const name = requireString(req.body.name, 'name', { maxLength: 120 });
+      const description = requireString(req.body.description, 'description', { maxLength: 2000 });
+      const url = requireString(req.body.url, 'url', { maxLength: 2048 });
 
       if (!isValidHttpUrl(url)) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid http/https address');
@@ -175,11 +210,14 @@ export function createServer() {
         name,
         description,
         url,
-        icon: typeof req.body.icon === 'string' ? req.body.icon.trim() || undefined : undefined,
+        icon: optionalString(req.body.icon, 'icon', { maxLength: 2048 }),
         theme: req.body.theme,
         features: req.body.features,
-        currentVersion: typeof req.body.currentVersion === 'string' ? req.body.currentVersion : undefined,
+        currentVersion: optionalString(req.body.currentVersion, 'currentVersion', { maxLength: 64 }),
       };
+      if (newApp.icon && !isValidHttpUrl(newApp.icon)) {
+        throw new ApiError(400, 'VALIDATION_ERROR', 'icon must be a valid http/https address');
+      }
 
       const created = await repository.createApp(newApp);
       logger.info('App created', { traceId: req.traceId, appId: created.id });
@@ -212,19 +250,22 @@ export function createServer() {
     asyncHandler(async (req, res) => {
       const patch: Partial<NewAppInput> = {};
       if (req.body.name !== undefined) {
-        patch.name = requireString(req.body.name, 'name');
+        patch.name = requireString(req.body.name, 'name', { maxLength: 120 });
       }
       if (req.body.description !== undefined) {
-        patch.description = requireString(req.body.description, 'description');
+        patch.description = requireString(req.body.description, 'description', { maxLength: 2000 });
       }
       if (req.body.url !== undefined) {
-        patch.url = requireString(req.body.url, 'url');
+        patch.url = requireString(req.body.url, 'url', { maxLength: 2048 });
         if (!isValidHttpUrl(patch.url)) {
           throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid http/https address');
         }
       }
       if (req.body.icon !== undefined) {
-        patch.icon = typeof req.body.icon === 'string' ? req.body.icon.trim() || undefined : undefined;
+        patch.icon = optionalString(req.body.icon, 'icon', { maxLength: 2048 });
+        if (patch.icon && !isValidHttpUrl(patch.icon)) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'icon must be a valid http/https address');
+        }
       }
       if (req.body.theme !== undefined) {
         patch.theme = req.body.theme;
@@ -233,7 +274,7 @@ export function createServer() {
         patch.features = req.body.features;
       }
       if (req.body.currentVersion !== undefined) {
-        patch.currentVersion = typeof req.body.currentVersion === 'string' ? req.body.currentVersion : undefined;
+        patch.currentVersion = optionalString(req.body.currentVersion, 'currentVersion', { maxLength: 64 });
       }
 
       const updated = await repository.updateApp(req.params.id, patch);
@@ -266,6 +307,16 @@ export function createServer() {
       }
 
       const platform = normalizePlatform(req.body?.platform);
+      // Guardrail: avoid overlapping build jobs for the same app to keep build state deterministic.
+      const activeBuild = await repository.getActiveBuildForApp(appConfig.id);
+      if (activeBuild) {
+        throw new ApiError(409, 'CONFLICT', 'A build is already running for this app', {
+          appId: appConfig.id,
+          existingBuildId: activeBuild.id,
+          startedAt: activeBuild.createdAt,
+        });
+      }
+
       const readiness = evaluateBuildReadiness(appConfig, platform);
       if (!readiness.ready) {
         throw new ApiError(400, 'APK_READINESS_FAILED', 'Build blocked by missing APK readiness requirements', {
@@ -358,7 +409,7 @@ export function createServer() {
   app.post(
     '/api/sources/validate',
     asyncHandler(async (req, res) => {
-      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl');
+      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl', { maxLength: 2048 });
       if (!isValidHttpUrl(sourceUrl)) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'sourceUrl must be a valid http/https address');
       }
@@ -392,7 +443,7 @@ export function createServer() {
         throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
       }
 
-      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl');
+      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl', { maxLength: 2048 });
       if (!isValidHttpUrl(sourceUrl)) {
         throw new ApiError(400, 'VALIDATION_ERROR', 'sourceUrl must be a valid http/https address');
       }

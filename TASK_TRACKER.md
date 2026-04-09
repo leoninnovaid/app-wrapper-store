@@ -21,6 +21,10 @@
 | G5-T1 | G5 | Debug playbook and release checklist docs | Done | High | Core | None | Runbooks available in `docs/` |
 | G5-T2 | G5 | Bug report template with trace capture | Done | Medium | Core | G1-T3 | Template requests trace ID and repro data |
 | G5-T3 | G5 | Expand regression coverage for core flows | In Progress | High | Core | G1-T4, G1-T5 | Additional integration/e2e tests planned |
+| G5-T4 | G5 | Repo alignment pass (README/architecture/contributing refresh) | Done | High | Core | None | Docs match actual modules and commands |
+| G5-T5 | G5 | Build concurrency and input guardrails | Done | High | Core | G1-T3 | `CONFLICT` on overlapping builds + field-size validation |
+| G5-T6 | G5 | Publish saferail and research backlog docs | Done | Medium | Core | G5-T4 | `docs/SAFERAILS.md` + `docs/FUTURE_RESEARCH_BACKLOG.md` committed |
+| G5-T7 | G5 | Adapter hardening and verification research execution | Pending | High | Core | G5-T6 | R1/R2 research converted into executable implementation tasks |
 
 ## Next queued tasks
 
@@ -31,6 +35,7 @@
 | Q3 | Add source/update UI screens in frontend | Required for full user flow of G2/G3 |
 | Q4 | Integrate signed Android artifact publishing | Required for production release |
 | Q5 | Add e2e test suite for app -> source -> update -> build | Required for RC confidence |
+| Q6 | Add CI policy check for target SDK and artifact type consistency | Prevent release-policy drift |
 
 ## Definition of done (global)
 
