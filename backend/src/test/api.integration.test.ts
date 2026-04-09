@@ -58,4 +58,64 @@ describe('Backend API contracts', () => {
     });
     expect(typeof response.body.traceId).toBe('string');
   });
+
+  it('blocks build when critical APK readiness requirements are missing', async () => {
+    const createResponse = await request(app).post('/api/apps').send({
+      name: 'Blocked Build App',
+      description: 'Build should be blocked due to missing readiness',
+      url: 'https://example.com',
+      features: {
+        packaging: {
+          strategy: 'twa',
+          distribution: 'play-store',
+          preferredArtifact: 'apk',
+          readiness: {
+            httpsEnabled: false,
+            validWebManifest: false,
+            digitalAssetLinksReady: false,
+            signingKeyReady: false,
+            targetApiCompliant: false,
+          },
+        },
+      },
+    });
+
+    const appId = createResponse.body.id as string;
+
+    const buildResponse = await request(app).post(`/api/apps/${appId}/build`).send({ platform: 'android' });
+    expect(buildResponse.status).toBe(400);
+    expect(buildResponse.body).toMatchObject({
+      code: 'APK_READINESS_FAILED',
+    });
+    expect(Array.isArray(buildResponse.body.details?.missingRequirements)).toBe(true);
+  });
+
+  it('starts build when required APK readiness requirements are met', async () => {
+    const createResponse = await request(app).post('/api/apps').send({
+      name: 'Ready Build App',
+      description: 'Build should start',
+      url: 'https://example.com',
+      features: {
+        packaging: {
+          strategy: 'webview',
+          distribution: 'local-sideload',
+          preferredArtifact: 'apk',
+          readiness: {
+            httpsEnabled: true,
+            signingKeyReady: true,
+          },
+        },
+      },
+    });
+
+    const appId = createResponse.body.id as string;
+
+    const buildResponse = await request(app).post(`/api/apps/${appId}/build`).send({ platform: 'android' });
+    expect(buildResponse.status).toBe(201);
+    expect(buildResponse.body).toMatchObject({
+      appId,
+      status: 'building',
+      platform: 'android',
+    });
+  });
 });

@@ -17,6 +17,26 @@ export interface ApiErrorPayload {
   traceId?: string;
 }
 
+export type PackagingStrategy = 'webview' | 'twa' | 'capacitor' | 'cordova';
+export type DistributionChannel = 'local-sideload' | 'play-store';
+export type AndroidArtifactType = 'apk' | 'aab';
+
+export interface ApkReadinessChecklist {
+  httpsEnabled?: boolean;
+  validWebManifest?: boolean;
+  serviceWorkerReady?: boolean;
+  digitalAssetLinksReady?: boolean;
+  signingKeyReady?: boolean;
+  targetApiCompliant?: boolean;
+}
+
+export interface PackagingConfig {
+  strategy?: PackagingStrategy;
+  distribution?: DistributionChannel;
+  preferredArtifact?: AndroidArtifactType;
+  readiness?: ApkReadinessChecklist;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -32,6 +52,7 @@ export interface AppConfig {
     enableOfflineMode?: boolean;
     enableNativeSharing?: boolean;
     enableDeepLinking?: boolean;
+    packaging?: PackagingConfig;
   };
   currentVersion?: string;
   createdAt: string;

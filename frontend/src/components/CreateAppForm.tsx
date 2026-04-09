@@ -1,8 +1,9 @@
-﻿import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { appService } from '../services/api';
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { AndroidArtifactType, DistributionChannel, PackagingStrategy, appService } from '../services/api';
 import { useAppStore } from '../store/appStore';
-import InlineError from './InlineError';
+import { evaluateApkReadiness } from '../utils/apk-readiness';
 import { toUiError } from '../utils/error-utils';
+import InlineError from './InlineError';
 
 interface CreateAppFormProps {
   onSuccess: () => void;
@@ -19,6 +20,15 @@ interface FormData {
   enableOfflineMode: boolean;
   enableNativeSharing: boolean;
   enableDeepLinking: boolean;
+  packagingStrategy: PackagingStrategy;
+  distribution: DistributionChannel;
+  preferredArtifact: AndroidArtifactType;
+  httpsEnabled: boolean;
+  validWebManifest: boolean;
+  serviceWorkerReady: boolean;
+  digitalAssetLinksReady: boolean;
+  signingKeyReady: boolean;
+  targetApiCompliant: boolean;
 }
 
 const initialFormData: FormData = {
@@ -32,6 +42,15 @@ const initialFormData: FormData = {
   enableOfflineMode: false,
   enableNativeSharing: true,
   enableDeepLinking: false,
+  packagingStrategy: 'webview',
+  distribution: 'local-sideload',
+  preferredArtifact: 'apk',
+  httpsEnabled: true,
+  validWebManifest: false,
+  serviceWorkerReady: false,
+  digitalAssetLinksReady: false,
+  signingKeyReady: false,
+  targetApiCompliant: false,
 };
 
 export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
@@ -44,7 +63,31 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const formRef = useRef<HTMLFormElement | null>(null);
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const readinessReport = useMemo(
+    () =>
+      evaluateApkReadiness({
+        enablePushNotifications: formData.enablePushNotifications,
+        enableOfflineMode: formData.enableOfflineMode,
+        enableNativeSharing: formData.enableNativeSharing,
+        enableDeepLinking: formData.enableDeepLinking,
+        packaging: {
+          strategy: formData.packagingStrategy,
+          distribution: formData.distribution,
+          preferredArtifact: formData.preferredArtifact,
+          readiness: {
+            httpsEnabled: formData.httpsEnabled,
+            validWebManifest: formData.validWebManifest,
+            serviceWorkerReady: formData.serviceWorkerReady,
+            digitalAssetLinksReady: formData.digitalAssetLinksReady,
+            signingKeyReady: formData.signingKeyReady,
+            targetApiCompliant: formData.targetApiCompliant,
+          },
+        },
+      }),
+    [formData],
+  );
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const target = event.target;
     const value = target instanceof HTMLInputElement && target.type === 'checkbox' ? target.checked : target.value;
 
@@ -74,6 +117,19 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
           enableOfflineMode: formData.enableOfflineMode,
           enableNativeSharing: formData.enableNativeSharing,
           enableDeepLinking: formData.enableDeepLinking,
+          packaging: {
+            strategy: formData.packagingStrategy,
+            distribution: formData.distribution,
+            preferredArtifact: formData.preferredArtifact,
+            readiness: {
+              httpsEnabled: formData.httpsEnabled,
+              validWebManifest: formData.validWebManifest,
+              serviceWorkerReady: formData.serviceWorkerReady,
+              digitalAssetLinksReady: formData.digitalAssetLinksReady,
+              signingKeyReady: formData.signingKeyReady,
+              targetApiCompliant: formData.targetApiCompliant,
+            },
+          },
         },
       });
 
@@ -199,7 +255,7 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="mb-3 font-semibold text-gray-800">Features</h3>
+              <h3 className="mb-3 font-semibold text-gray-800">Core Features</h3>
               <div className="space-y-2">
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
@@ -241,6 +297,143 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
                   />
                   <span className="text-sm text-gray-700">Enable Deep Linking</span>
                 </label>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h3 className="mb-3 font-semibold text-gray-800">Android Packaging</h3>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Strategy</label>
+                  <select
+                    name="packagingStrategy"
+                    value={formData.packagingStrategy}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="webview">WebView Wrapper</option>
+                    <option value="twa">Trusted Web Activity</option>
+                    <option value="capacitor">Capacitor</option>
+                    <option value="cordova">Cordova</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Distribution</label>
+                  <select
+                    name="distribution"
+                    value={formData.distribution}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="local-sideload">Local / Sideload</option>
+                    <option value="play-store">Google Play Store</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Artifact</label>
+                  <select
+                    name="preferredArtifact"
+                    value={formData.preferredArtifact}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="apk">APK</option>
+                    <option value="aab">AAB</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="httpsEnabled"
+                    checked={formData.httpsEnabled}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Website is available on HTTPS</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="signingKeyReady"
+                    checked={formData.signingKeyReady}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Signing keys/keystore are configured</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="validWebManifest"
+                    checked={formData.validWebManifest}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Web manifest is valid (required for TWA)</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="digitalAssetLinksReady"
+                    checked={formData.digitalAssetLinksReady}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Digital Asset Links are verified (TWA)</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="serviceWorkerReady"
+                    checked={formData.serviceWorkerReady}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Service worker is production-ready</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    name="targetApiCompliant"
+                    checked={formData.targetApiCompliant}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded"
+                  />
+                  <span>Target SDK matches current Play requirement (API 35+)</span>
+                </label>
+              </div>
+
+              <div
+                className={`mt-3 rounded-md border px-3 py-2 text-sm ${
+                  readinessReport.ready ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-900'
+                }`}
+              >
+                <p className="font-medium">
+                  {readinessReport.ready
+                    ? 'Build readiness: ready for Android build'
+                    : 'Build readiness: missing blocking requirements'}
+                </p>
+                {readinessReport.missingRequirements.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {readinessReport.missingRequirements.map((requirement) => (
+                      <li key={requirement.id} className={requirement.blocking ? 'text-amber-900' : 'text-amber-700'}>
+                        {requirement.label}
+                        {!requirement.blocking ? ' (recommended)' : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import AppList from './components/AppList';
 import CreateAppForm from './components/CreateAppForm';
 import GlobalErrorBanner from './components/GlobalErrorBanner';
 import Header from './components/Header';
+import PackagingMethodGuide from './components/PackagingMethodGuide';
 import { healthCheck } from './services/api';
 import { useAppStore } from './store/appStore';
 import { toUiError } from './utils/error-utils';
@@ -33,6 +34,7 @@ export default function App() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <GlobalErrorBanner />
+        <PackagingMethodGuide />
         <CreateAppForm onSuccess={() => {}} />
         <AppList />
       </main>

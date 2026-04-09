@@ -1,7 +1,8 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AppConfig, appService, buildService } from '../services/api';
 import { useAppStore } from '../store/appStore';
 import { extractTargetId, UiError } from '../types/errors';
+import { evaluateApkReadiness } from '../utils/apk-readiness';
 import { toUiError } from '../utils/error-utils';
 import InlineError from './InlineError';
 
@@ -9,6 +10,13 @@ interface AppCardProps {
   app: AppConfig;
   onRefresh: () => void;
 }
+
+const featureLabels: Array<{ key: keyof NonNullable<AppConfig['features']>; label: string }> = [
+  { key: 'enableNativeSharing', label: 'Native Sharing' },
+  { key: 'enablePushNotifications', label: 'Push Notifications' },
+  { key: 'enableOfflineMode', label: 'Offline Mode' },
+  { key: 'enableDeepLinking', label: 'Deep Linking' },
+];
 
 export default function AppCard({ app, onRefresh }: AppCardProps) {
   const deleteApp = useAppStore((state) => state.deleteApp);
@@ -23,6 +31,8 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
     () => (error: UiError) => extractTargetId(error.details) === app.id,
     [app.id],
   );
+
+  const readinessReport = useMemo(() => evaluateApkReadiness(app.features), [app.features]);
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${app.name}"?`)) {
@@ -70,11 +80,9 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
     }
   };
 
-  const enabledFeatures = app.features
-    ? Object.entries(app.features)
-        .filter(([, enabled]) => Boolean(enabled))
-        .map(([name]) => name)
-    : [];
+  const enabledFeatures = featureLabels
+    .filter(({ key }) => Boolean(app.features?.[key]))
+    .map(({ label }) => label);
 
   return (
     <div className="rounded-lg bg-white p-4 shadow-md transition-shadow hover:shadow-lg">
@@ -135,6 +143,20 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
 
       {buildNotice && <p className="mb-2 rounded-md bg-green-50 px-3 py-2 text-xs text-green-700">{buildNotice}</p>}
 
+      {!readinessReport.ready && (
+        <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="font-medium">APK readiness missing</p>
+          <ul className="mt-1 list-disc space-y-1 pl-4">
+            {readinessReport.missingRequirements
+              .filter((requirement) => requirement.blocking)
+              .slice(0, 3)
+              .map((requirement) => (
+                <li key={requirement.id}>{requirement.label}</li>
+              ))}
+          </ul>
+        </div>
+      )}
+
       {showDetails && (
         <div className="border-t pt-3 text-sm text-gray-600">
           <p>
@@ -142,6 +164,12 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
           </p>
           <p>
             <strong>Features:</strong> {enabledFeatures.length > 0 ? enabledFeatures.join(', ') : 'None'}
+          </p>
+          <p>
+            <strong>Packaging:</strong> {readinessReport.strategy} ({readinessReport.distribution}, {readinessReport.preferredArtifact})
+          </p>
+          <p>
+            <strong>Build readiness:</strong> {readinessReport.ready ? 'Ready' : 'Blocked'}
           </p>
         </div>
       )}

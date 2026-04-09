@@ -5,6 +5,7 @@ import { SourceAdapter } from './adapters/source-adapter';
 import { ApiError, isApiError } from './errors/api-error';
 import { requestContextMiddleware } from './middleware/request-context';
 import { SqliteStoreRepository } from './repositories/sqlite-store-repository';
+import { evaluateBuildReadiness } from './services/build-readiness';
 import { getSourceAdapter } from './services/source-registry';
 import { checkForUpdates } from './services/update-service';
 import { Build, NewAppInput, Platform, SourceType } from './types/domain';
@@ -265,6 +266,18 @@ export function createServer() {
       }
 
       const platform = normalizePlatform(req.body?.platform);
+      const readiness = evaluateBuildReadiness(appConfig, platform);
+      if (!readiness.ready) {
+        throw new ApiError(400, 'APK_READINESS_FAILED', 'Build blocked by missing APK readiness requirements', {
+          appId: appConfig.id,
+          platform,
+          strategy: readiness.strategy,
+          distribution: readiness.distribution,
+          preferredArtifact: readiness.preferredArtifact,
+          missingRequirements: readiness.missingRequirements,
+        });
+      }
+
       const build = await repository.createBuild(appConfig.id, platform);
       await simulateBuildCompletion(build, req.traceId);
 

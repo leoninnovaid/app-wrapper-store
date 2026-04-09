@@ -1,8 +1,9 @@
-﻿export type ErrorCode =
+export type ErrorCode =
   | 'VALIDATION_ERROR'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'SOURCE_VALIDATION_FAILED'
+  | 'APK_READINESS_FAILED'
   | 'UPDATE_BLOCKED'
   | 'NETWORK_ERROR'
   | 'BACKEND_ERROR'
