@@ -19,6 +19,7 @@ app-wrapper-store/
 |-- app-generator/     # Build queue helper service
 |-- wrapper-template/  # React Native/Expo wrapper template + Fastlane scaffolding
 |-- docs/              # Architecture, runbooks, guardrails, research notes
+|-- policy/            # Versioned Android/Play policy guardrail definitions
 |-- .github/           # CI workflows and issue templates
 |-- META_PLAN.md
 |-- TASK_TRACKER.md
@@ -79,6 +80,7 @@ npm test
 ```bash
 cd app-generator
 npm run build
+npm run policy:check
 ```
 
 ## Implemented Guardrails
@@ -105,6 +107,7 @@ See [docs/SAFERAILS.md](docs/SAFERAILS.md) for details.
 - [Android Packaging Blueprint](docs/ANDROID_PACKAGING_BLUEPRINT.md)
 - [Saferails](docs/SAFERAILS.md)
 - [Future Research Backlog](docs/FUTURE_RESEARCH_BACKLOG.md)
+- [Research Execution Plan](docs/research/RESEARCH_EXECUTION_PLAN.md)
 - [Debug Playbook](docs/DEBUG_PLAYBOOK.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Contributing](docs/CONTRIBUTING.md)

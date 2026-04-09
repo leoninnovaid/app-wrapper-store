@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "policy:check": "node scripts/check-play-policy.mjs --policy ../policy/android-play-policy.json --metadata ./fixtures/policy-metadata.sample.json"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

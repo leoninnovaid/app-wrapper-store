@@ -124,3 +124,51 @@
 1. Execute R1/R2 research backlog into concrete adapter and verification implementation tasks.
 2. Add CI policy checks for target SDK and release artifact type.
 3. Add e2e tests for failure visibility across create/source/update/build flow.
+
+---
+
+## 2026-04-09 (Research execution continuation)
+
+**Focus:** Convert research backlog into concrete implementation-ready steps.
+
+### Completed changes
+
+- Created `docs/research/RESEARCH_EXECUTION_PLAN.md` with phased execution and exit criteria.
+- Created `docs/research/R1_METHODS_SCORECARD_2026-04-09.md` with preliminary method scoring and recommendation.
+- Created `docs/research/R2_TRUST_MODEL_2026-04-09.md` with deterministic status mapping and test matrix.
+- Created `docs/research/R3_POLICY_AUTOMATION_2026-04-09.md` with CI gate design and acceptance criteria.
+- Updated `docs/FUTURE_RESEARCH_BACKLOG.md` with status snapshot and immediate next steps.
+- Updated `TASK_TRACKER.md` and `META_PLAN.md` to tie research outputs to execution tasks.
+- Added initial policy automation prototype:
+- `policy/android-play-policy.json`
+- `app-generator/scripts/check-play-policy.mjs`
+- CI invocation via `npm run policy:check` in app-generator job.
+
+### Failures observed
+
+- None in code/runtime during this research pass.
+
+### Root cause
+
+- Not applicable.
+
+### Fixes applied
+
+- Not applicable.
+
+### Verification evidence
+
+- Sources gathered from official docs for Android, Chrome TWA, Capacitor, and Cordova.
+- Retrieved and recorded source evidence on 2026-04-09 in each research artifact.
+- Policy checker passes locally with sample metadata fixture.
+
+### Prevention actions
+
+- Added explicit research artifacts and cadence to avoid topic-only backlog drift.
+- Added implementation-oriented acceptance criteria in research docs.
+
+### Next actions
+
+1. Start prototype runs for WebView/TWA/Capacitor/Cordova under shared acceptance checks.
+2. Extend policy checker with failing fixtures and add assertion tests.
+3. Convert R2 trust matrix directly into backend adapter code tasks.

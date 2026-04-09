@@ -1,0 +1,7 @@
+{
+  "appId": "sample-app",
+  "distribution": "play-store",
+  "targetSdkVersion": 35,
+  "preferredArtifact": "aab",
+  "signingReady": true
+}

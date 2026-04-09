@@ -94,6 +94,13 @@ Acceptance gates:
 - Input guardrails reject over-limit payload fields with validation errors.
 - Research backlog and task tracker are synchronized with next implementation steps.
 
+Research outputs committed in this sprint:
+
+- `docs/research/RESEARCH_EXECUTION_PLAN.md`
+- `docs/research/R1_METHODS_SCORECARD_2026-04-09.md`
+- `docs/research/R2_TRUST_MODEL_2026-04-09.md`
+- `docs/research/R3_POLICY_AUTOMATION_2026-04-09.md`
+
 ## Public interface commitments
 
 - `ErrorScope`: `global | create-app | load-apps | build-app | delete-app | source-validate | update-check | release`

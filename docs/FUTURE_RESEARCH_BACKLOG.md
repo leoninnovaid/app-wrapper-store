@@ -1,93 +1,96 @@
 # Future Research Backlog
 
-Research and implementation backlog for next milestones.
+This backlog tracks research topics and their conversion into implementation tasks.
+
+## Current status snapshot (2026-04-09)
+
+- R1: In progress (scorecard draft published)
+- R2: In progress (trust model draft published)
+- R3: In progress (policy automation draft published)
+- R4: Pending
+
+Research artifacts:
+
+- `docs/research/RESEARCH_EXECUTION_PLAN.md`
+- `docs/research/R1_METHODS_SCORECARD_2026-04-09.md`
+- `docs/research/R2_TRUST_MODEL_2026-04-09.md`
+- `docs/research/R3_POLICY_AUTOMATION_2026-04-09.md`
+
+Initial R3 prototype shipped:
+
+- `policy/android-play-policy.json`
+- `app-generator/scripts/check-play-policy.mjs`
 
 ## R1 - Production-grade website-to-APK strategies
 
 ### Objective
-Compare real production viability of WebView, TWA, Capacitor, and Cordova for this repo's use cases.
+Compare production viability of WebView, TWA, Capacitor, and Cordova for this repo's use cases.
 
-### Questions
+### Immediate concrete steps
 
-1. Which strategy gives the best reliability for dynamic websites with login/session flows?
-2. Which strategy has the lowest long-term maintenance burden?
-3. Which strategy supports Play-compliant release automation most cleanly?
+1. Run one prototype build per strategy with identical sample site and acceptance checks.
+2. Capture setup time, failure modes, and remediation effort.
+3. Finalize default strategy by distribution target (local, Play).
 
 ### Deliverables
 
-- Strategy scorecard (security, DX, release reliability, policy risk)
-- Recommended default strategy + fallback strategy
-- Migration path between strategies
-
-### Primary references
-
-- TWA: https://developer.chrome.com/docs/android/trusted-web-activity/integration-guide/
-- Capacitor Android: https://capacitorjs.com/docs/android
-- Cordova Android: https://cordova.apache.org/docs/en/latest/guide/platforms/android/
-- Android WebView reference: https://developer.android.com/reference/android/webkit/WebView
+- Strategy scorecard with recommendation and fallback path.
+- Migration notes between strategy types.
+- Implementation tasks for chosen defaults.
 
 ## R2 - Artifact trust and verification
 
 ### Objective
 Define minimum trust model for installable artifacts.
 
-### Questions
+### Immediate concrete steps
 
-1. Which checksum/signature signals are available from each source type?
-2. How to classify `verified` vs `unverified` vs `blocked` consistently?
-3. Which verifications are mandatory before release status is green?
+1. Enumerate integrity signals available per source adapter type.
+2. Implement status decision table for `verified/unverified/blocked`.
+3. Convert decision table to test cases and backend implementation tasks.
 
 ### Deliverables
 
-- Trust matrix by source type
-- Verification pipeline design
-- Failure taxonomy + UI copy for blocked states
-
-### Primary references
-
-- Android app signing: https://developer.android.com/studio/publish/app-signing
-- Android App Bundle format: https://developer.android.com/guide/app-bundle/app-bundle-format
+- Trust matrix by source type.
+- Verification pipeline design and error taxonomy.
+- UI copy guidelines for blocked states.
 
 ## R3 - Policy and release compliance automation
 
 ### Objective
 Keep release pipeline aligned with Google Play requirements automatically.
 
-### Questions
+### Immediate concrete steps
 
-1. How to encode target API guardrails as CI checks?
-2. Which metadata should be validated pre-release (SDK, signing, artifact type)?
-3. How to keep policy checks current without brittle manual updates?
+1. Create versioned policy config file for Android/Play constraints.
+2. Implement CI policy checker with failing fixtures.
+3. Wire checker into release workflow as a hard gate.
 
 ### Deliverables
 
-- CI policy-check job design
-- Guardrail config format for policy values
-- Release gate checklist integration
-
-### Primary references
-
-- Play target API requirements: https://developer.android.com/google/play/requirements/target-sdk
-- Play Console policy guidance: https://support.google.com/googleplay/android-developer
+- CI policy-check job design and implementation.
+- Guardrail config format and update process.
+- Release checklist synchronization.
 
 ## R4 - Open hardware + flexible software integration track
 
 ### Objective
-Map open hardware principles into the software architecture and operational model.
+Map open hardware principles into software architecture and contributor workflows.
 
-### Questions
+### Immediate concrete steps
 
-1. How to keep modules replaceable without service fragmentation?
-2. Which interfaces must remain stable for community-built adapters/builders?
-3. How to design test fixtures so contributors can validate modules offline?
+1. Define stable interface boundaries for adapters and builder modules.
+2. Draft adapter certification checklist.
+3. Design offline test fixtures for community contributors.
 
 ### Deliverables
 
-- Interface stability policy
-- Adapter certification checklist
-- Community contribution matrix
+- Interface stability policy.
+- Adapter certification checklist.
+- Community contribution matrix.
 
 ## Research cadence
 
-- Weekly: triage backlog priorities and update status.
-- Per completed research item: add summary to `DAILY_LOGS.md` and convert outcomes into concrete tasks in `TASK_TRACKER.md`.
+- Daily: add findings and blockers to `DAILY_LOGS.md`.
+- Weekly: review status in `TASK_TRACKER.md` and convert accepted research into implementation tasks.
+- For each finalized research item: include source links and retrieval date.

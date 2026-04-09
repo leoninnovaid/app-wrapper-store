@@ -1,0 +1,11 @@
+{
+  "version": "2026-04-09",
+  "source": "https://developer.android.com/google/play/requirements/target-sdk",
+  "retrievedAt": "2026-04-09",
+  "effectiveDate": "2025-08-31",
+  "rules": {
+    "requiredTargetSdk": 35,
+    "playRequiredArtifact": "aab",
+    "requireSigningReady": true
+  }
+}

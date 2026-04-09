@@ -38,6 +38,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run build
+      - run: npm run policy:check
       - run: npm run test
 
   app-generator:
