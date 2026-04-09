@@ -1,18 +1,16 @@
-import express, { Request, Response } from "express";
-import cors from "cors";
-import { v4 as uuidv4 } from "uuid";
-import dotenv from "dotenv";
+﻿import cors from 'cors';
+import dotenv from 'dotenv';
+import express, { NextFunction, Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT ?? 3000);
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+type BuildStatus = 'pending' | 'building' | 'completed' | 'failed';
+type Platform = 'android' | 'ios';
 
-// In-memory storage (replace with database in production)
 interface AppConfig {
   id: string;
   name: string;
@@ -36,48 +34,66 @@ interface AppConfig {
 interface Build {
   id: string;
   appId: string;
-  status: "pending" | "building" | "completed" | "failed";
-  platform: "android" | "ios";
+  status: BuildStatus;
+  platform: Platform;
   downloadUrl?: string;
   error?: string;
   createdAt: string;
   completedAt?: string;
 }
 
-const apps: Map<string, AppConfig> = new Map();
-const builds: Map<string, Build> = new Map();
+const apps = new Map<string, AppConfig>();
+const builds = new Map<string, Build>();
 
-// Routes
+app.use(cors());
+app.use(express.json());
 
-/**
- * GET /api/health
- * Health check endpoint
- */
-app.get("/api/health", (req: Request, res: Response) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+const isValidUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const normalizePlatform = (value: unknown): Platform => {
+  if (value === 'ios') {
+    return 'ios';
+  }
+  return 'android';
+};
+
+const inferDownloadExtension = (platform: Platform): string => {
+  return platform === 'ios' ? 'ipa' : 'apk';
+};
+
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-/**
- * POST /api/apps
- * Create a new app configuration
- */
-app.post("/api/apps", (req: Request, res: Response) => {
+app.post('/api/apps', (req: Request, res: Response) => {
   try {
-    const { name, description, url, icon, theme, features } = req.body;
+    const { name, description, url, icon, theme, features } = req.body as Partial<AppConfig>;
 
-    // Validation
-    if (!name || !url) {
-      return res.status(400).json({ error: "Name and URL are required" });
+    const trimmedName = (name ?? '').trim();
+    const trimmedDescription = (description ?? '').trim();
+    const trimmedUrl = (url ?? '').trim();
+
+    if (!trimmedName || !trimmedDescription || !trimmedUrl) {
+      return res.status(400).json({ error: 'Name, description, and URL are required' });
     }
 
-    const appId = uuidv4();
-    const now = new Date().toISOString();
+    if (!isValidUrl(trimmedUrl)) {
+      return res.status(400).json({ error: 'URL must be a valid http/https address' });
+    }
 
+    const now = new Date().toISOString();
     const appConfig: AppConfig = {
-      id: appId,
-      name,
-      description,
-      url,
+      id: uuidv4(),
+      name: trimmedName,
+      description: trimmedDescription,
+      url: trimmedUrl,
       icon,
       theme,
       features,
@@ -85,106 +101,89 @@ app.post("/api/apps", (req: Request, res: Response) => {
       updatedAt: now,
     };
 
-    apps.set(appId, appConfig);
-
-    res.status(201).json(appConfig);
+    apps.set(appConfig.id, appConfig);
+    return res.status(201).json(appConfig);
   } catch (error) {
-    res.status(500).json({ error: "Failed to create app" });
+    console.error('Failed to create app', error);
+    return res.status(500).json({ error: 'Failed to create app' });
   }
 });
 
-/**
- * GET /api/apps
- * List all apps
- */
-app.get("/api/apps", (req: Request, res: Response) => {
+app.get('/api/apps', (_req: Request, res: Response) => {
   try {
-    const appList = Array.from(apps.values());
-    res.json(appList);
+    return res.json(Array.from(apps.values()));
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch apps" });
+    console.error('Failed to fetch apps', error);
+    return res.status(500).json({ error: 'Failed to fetch apps' });
   }
 });
 
-/**
- * GET /api/apps/:id
- * Get app details
- */
-app.get("/api/apps/:id", (req: Request, res: Response) => {
+app.get('/api/apps/:id', (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const app = apps.get(id);
+    const found = apps.get(req.params.id);
 
-    if (!app) {
-      return res.status(404).json({ error: "App not found" });
+    if (!found) {
+      return res.status(404).json({ error: 'App not found' });
     }
 
-    res.json(app);
+    return res.json(found);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch app" });
+    console.error('Failed to fetch app', error);
+    return res.status(500).json({ error: 'Failed to fetch app' });
   }
 });
 
-/**
- * PUT /api/apps/:id
- * Update app configuration
- */
-app.put("/api/apps/:id", (req: Request, res: Response) => {
+app.put('/api/apps/:id', (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const app = apps.get(id);
+    const existing = apps.get(req.params.id);
 
-    if (!app) {
-      return res.status(404).json({ error: "App not found" });
+    if (!existing) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    const incoming = req.body as Partial<AppConfig>;
+
+    if (incoming.url && !isValidUrl(incoming.url)) {
+      return res.status(400).json({ error: 'URL must be a valid http/https address' });
     }
 
     const updated: AppConfig = {
-      ...app,
-      ...req.body,
-      id: app.id,
-      createdAt: app.createdAt,
+      ...existing,
+      ...incoming,
+      id: existing.id,
+      createdAt: existing.createdAt,
       updatedAt: new Date().toISOString(),
     };
 
-    apps.set(id, updated);
-    res.json(updated);
+    apps.set(existing.id, updated);
+    return res.json(updated);
   } catch (error) {
-    res.status(500).json({ error: "Failed to update app" });
+    console.error('Failed to update app', error);
+    return res.status(500).json({ error: 'Failed to update app' });
   }
 });
 
-/**
- * DELETE /api/apps/:id
- * Delete app configuration
- */
-app.delete("/api/apps/:id", (req: Request, res: Response) => {
+app.delete('/api/apps/:id', (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const app = apps.get(id);
-
-    if (!app) {
-      return res.status(404).json({ error: "App not found" });
+    if (!apps.has(req.params.id)) {
+      return res.status(404).json({ error: 'App not found' });
     }
 
-    apps.delete(id);
-    res.json({ message: "App deleted successfully" });
+    apps.delete(req.params.id);
+    return res.json({ message: 'App deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: "Failed to delete app" });
+    console.error('Failed to delete app', error);
+    return res.status(500).json({ error: 'Failed to delete app' });
   }
 });
 
-/**
- * POST /api/apps/:id/build
- * Trigger APK/IPA build
- */
-app.post("/api/apps/:id/build", (req: Request, res: Response) => {
+app.post('/api/apps/:id/build', (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { platform = "android" } = req.body;
+    const appId = req.params.id;
+    const platform = normalizePlatform(req.body?.platform);
 
-    const app = apps.get(id);
-    if (!app) {
-      return res.status(404).json({ error: "App not found" });
+    if (!apps.has(appId)) {
+      return res.status(404).json({ error: 'App not found' });
     }
 
     const buildId = uuidv4();
@@ -192,74 +191,77 @@ app.post("/api/apps/:id/build", (req: Request, res: Response) => {
 
     const build: Build = {
       id: buildId,
-      appId: id,
-      status: "pending",
+      appId,
+      status: 'building',
       platform,
       createdAt: now,
     };
 
     builds.set(buildId, build);
 
-    // Simulate build process (in production, trigger actual build)
     setTimeout(() => {
-      const updatedBuild = builds.get(buildId);
-      if (updatedBuild) {
-        updatedBuild.status = "completed";
-        updatedBuild.downloadUrl = `/downloads/${buildId}.apk`;
-        updatedBuild.completedAt = new Date().toISOString();
-        builds.set(buildId, updatedBuild);
+      const existing = builds.get(buildId);
+      if (!existing) {
+        return;
       }
+
+      const extension = inferDownloadExtension(existing.platform);
+      const completed: Build = {
+        ...existing,
+        status: 'completed',
+        downloadUrl: `/downloads/${buildId}.${extension}`,
+        completedAt: new Date().toISOString(),
+      };
+
+      builds.set(buildId, completed);
     }, 5000);
 
-    res.status(201).json(build);
+    return res.status(201).json(build);
   } catch (error) {
-    res.status(500).json({ error: "Failed to start build" });
+    console.error('Failed to start build', error);
+    return res.status(500).json({ error: 'Failed to start build' });
   }
 });
 
-/**
- * GET /api/builds/:buildId
- * Get build status
- */
-app.get("/api/builds/:buildId", (req: Request, res: Response) => {
+app.get('/api/builds/:buildId', (req: Request, res: Response) => {
   try {
-    const { buildId } = req.params;
-    const build = builds.get(buildId);
+    const build = builds.get(req.params.buildId);
 
     if (!build) {
-      return res.status(404).json({ error: "Build not found" });
+      return res.status(404).json({ error: 'Build not found' });
     }
 
-    res.json(build);
+    return res.json(build);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch build" });
+    console.error('Failed to fetch build', error);
+    return res.status(500).json({ error: 'Failed to fetch build' });
   }
 });
 
-/**
- * GET /api/apps/:id/builds
- * Get all builds for an app
- */
-app.get("/api/apps/:id/builds", (req: Request, res: Response) => {
+app.get('/api/apps/:id/builds', (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const appBuilds = Array.from(builds.values()).filter((b) => b.appId === id);
-    res.json(appBuilds);
+    const appId = req.params.id;
+
+    if (!apps.has(appId)) {
+      return res.status(404).json({ error: 'App not found' });
+    }
+
+    const appBuilds = Array.from(builds.values()).filter((build) => build.appId === appId);
+    return res.json(appBuilds);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch builds" });
+    console.error('Failed to fetch builds', error);
+    return res.status(500).json({ error: 'Failed to fetch builds' });
   }
 });
 
-// Error handling
-app.use((err: any, req: Request, res: Response) => {
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Unhandled error', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-// Start server
 app.listen(PORT, () => {
-  console.log(`🚀 App Wrapper Store Backend running on http://localhost:${PORT}`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
+  console.log(`App Wrapper Store Backend running on http://localhost:${PORT}`);
+  console.log(`Health endpoint: http://localhost:${PORT}/api/health`);
 });
 
 export default app;

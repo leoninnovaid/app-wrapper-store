@@ -118,7 +118,7 @@ Tailwind CSS for styling with custom colors:
 Create a `.env.local` file:
 
 ```
-REACT_APP_API_URL=http://localhost:3000/api
+VITE_API_URL=http://localhost:3000/api
 ```
 
 ## Contributing

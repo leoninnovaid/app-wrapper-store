@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState } from 'react';
 import { AppConfig, appService, buildService } from '../services/api';
 import { useAppStore } from '../store/appStore';
 
@@ -8,18 +8,22 @@ interface AppCardProps {
 }
 
 export default function AppCard({ app, onRefresh }: AppCardProps) {
-  const { deleteApp, selectApp } = useAppStore();
+  const { deleteApp } = useAppStore();
   const [isBuilding, setIsBuilding] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
 
   const handleDelete = async () => {
-    if (window.confirm(`Delete "${app.name}"?`)) {
-      try {
-        await appService.delete(app.id);
-        deleteApp(app.id);
-      } catch (err) {
-        console.error('Failed to delete app', err);
-      }
+    if (!window.confirm(`Delete "${app.name}"?`)) {
+      return;
+    }
+
+    try {
+      await appService.delete(app.id);
+      deleteApp(app.id);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to delete app', err);
+      alert('Failed to delete app');
     }
   };
 
@@ -28,7 +32,8 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
       setIsBuilding(true);
       const response = await buildService.triggerBuild(app.id, 'android');
       console.log('Build started:', response.data);
-      alert('Build started! Check back soon for download link.');
+      alert('Build started. Check back soon for a download link.');
+      onRefresh();
     } catch (err) {
       console.error('Failed to start build', err);
       alert('Failed to start build');
@@ -37,37 +42,41 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
     }
   };
 
+  const enabledFeatures = app.features
+    ? Object.entries(app.features)
+        .filter(([, enabled]) => Boolean(enabled))
+        .map(([name]) => name)
+    : [];
+
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow p-4">
-      {/* App Icon & Header */}
-      <div className="flex items-start gap-3 mb-3">
-        {app.icon && (
-          <img
-            src={app.icon}
-            alt={app.name}
-            className="w-12 h-12 rounded-lg object-cover"
-          />
+    <div className="rounded-lg bg-white p-4 shadow-md transition-shadow hover:shadow-lg">
+      <div className="mb-3 flex items-start gap-3">
+        {app.icon ? (
+          <img src={app.icon} alt={app.name} className="h-12 w-12 rounded-lg object-cover" />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 text-xs font-semibold text-gray-500">
+            N/A
+          </div>
         )}
+
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-800">{app.name}</h3>
           <p className="text-sm text-gray-500">{app.url}</p>
         </div>
       </div>
 
-      {/* Description */}
-      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{app.description}</p>
+      <p className="mb-3 text-sm text-gray-600">{app.description || 'No description provided.'}</p>
 
-      {/* Theme Preview */}
       {app.theme?.primaryColor && (
         <div className="mb-3 flex gap-2">
           <div
-            className="w-6 h-6 rounded"
+            className="h-6 w-6 rounded"
             style={{ backgroundColor: app.theme.primaryColor }}
             title="Primary Color"
           />
           {app.theme.accentColor && (
             <div
-              className="w-6 h-6 rounded border border-gray-300"
+              className="h-6 w-6 rounded border border-gray-300"
               style={{ backgroundColor: app.theme.accentColor }}
               title="Accent Color"
             />
@@ -75,43 +84,35 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2 mb-3">
+      <div className="mb-3 flex gap-2">
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className="flex-1 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-sm transition-colors hover:bg-gray-200"
         >
           {showDetails ? 'Hide' : 'Details'}
         </button>
         <button
           onClick={handleBuild}
           disabled={isBuilding}
-          className="flex-1 px-3 py-2 text-sm bg-primary hover:bg-primary/90 text-white rounded-lg transition-colors disabled:opacity-50"
+          className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {isBuilding ? 'Building...' : 'Build APK'}
         </button>
         <button
           onClick={handleDelete}
-          className="px-3 py-2 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+          className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-200"
         >
           Delete
         </button>
       </div>
 
-      {/* Expandable Details */}
       {showDetails && (
         <div className="border-t pt-3 text-sm text-gray-600">
           <p>
             <strong>Created:</strong> {new Date(app.createdAt).toLocaleDateString()}
           </p>
           <p>
-            <strong>Features:</strong>{' '}
-            {app.features
-              ? Object.entries(app.features)
-                  .filter(([, v]) => v)
-                  .map(([k]) => k)
-                  .join(', ')
-              : 'None'}
+            <strong>Features:</strong> {enabledFeatures.length > 0 ? enabledFeatures.join(', ') : 'None'}
           </p>
         </div>
       )}

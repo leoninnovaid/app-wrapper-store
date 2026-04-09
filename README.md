@@ -59,17 +59,20 @@ app-wrapper-store/
 git clone https://github.com/leoninnovaid/app-wrapper-store.git
 cd app-wrapper-store
 
-# Install dependencies
+# Install backend and start API (http://localhost:3000)
+cd backend
 npm install
+npm run dev
 
-# Start backend server
-cd backend && npm start
+# In a second terminal, install frontend and start UI (http://localhost:5173)
+cd ../frontend
+npm install
+npm run dev
 
-# Start frontend store
-cd ../frontend && npm start
-
-# Generate wrapper app
-cd ../app-generator && npm start
+# Optional: run app generator helper
+cd ../app-generator
+npm install
+npm run dev -- android
 ```
 
 ## Proof of Concept: ChatGPT Codex on Android

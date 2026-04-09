@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { appService } from '../services/api';
 import { useAppStore } from '../store/appStore';
 
@@ -6,41 +6,59 @@ interface CreateAppFormProps {
   onSuccess: () => void;
 }
 
+interface FormData {
+  name: string;
+  description: string;
+  url: string;
+  icon: string;
+  primaryColor: string;
+  accentColor: string;
+  enablePushNotifications: boolean;
+  enableOfflineMode: boolean;
+  enableNativeSharing: boolean;
+  enableDeepLinking: boolean;
+}
+
+const initialFormData: FormData = {
+  name: '',
+  description: '',
+  url: '',
+  icon: '',
+  primaryColor: '#10a37f',
+  accentColor: '#ffffff',
+  enablePushNotifications: false,
+  enableOfflineMode: false,
+  enableNativeSharing: true,
+  enableDeepLinking: false,
+};
+
 export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
   const { addApp, setError } = useAppStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    url: '',
-    icon: '',
-    primaryColor: '#10a37f',
-    accentColor: '#ffffff',
-    enablePushNotifications: false,
-    enableOfflineMode: false,
-    enableNativeSharing: true,
-    enableDeepLinking: false,
-  });
+  const [formData, setFormData] = useState<FormData>(initialFormData);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
+  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const target = event.target;
+    const value = target instanceof HTMLInputElement && target.type === 'checkbox' ? target.checked : target.value;
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      [target.name]: value,
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     try {
       setIsSubmitting(true);
 
       const response = await appService.create({
-        name: formData.name,
-        description: formData.description,
-        url: formData.url,
-        icon: formData.icon || undefined,
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        url: formData.url.trim(),
+        icon: formData.icon.trim() || undefined,
         theme: {
           primaryColor: formData.primaryColor,
           accentColor: formData.accentColor,
@@ -54,18 +72,7 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
       });
 
       addApp(response.data);
-      setFormData({
-        name: '',
-        description: '',
-        url: '',
-        icon: '',
-        primaryColor: '#10a37f',
-        accentColor: '#ffffff',
-        enablePushNotifications: false,
-        enableOfflineMode: false,
-        enableNativeSharing: true,
-        enableDeepLinking: false,
-      });
+      setFormData(initialFormData);
       setIsOpen(false);
       onSuccess();
     } catch (err) {
@@ -81,20 +88,17 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
       {!isOpen ? (
         <button
           onClick={() => setIsOpen(true)}
-          className="w-full px-4 py-3 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors"
+          className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white transition-colors hover:bg-primary/90"
         >
           + Create New App
         </button>
       ) : (
-        <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800">Create New App</h2>
+        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-lg">
+          <h2 className="mb-4 text-2xl font-bold text-gray-800">Create New App</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Basic Info */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                App Name *
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">App Name *</label>
               <input
                 type="text"
                 name="name"
@@ -102,14 +106,12 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
                 onChange={handleChange}
                 placeholder="e.g., ChatGPT Codex"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description *
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Description *</label>
               <textarea
                 name="description"
                 value={formData.description}
@@ -117,14 +119,12 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
                 placeholder="Describe your app..."
                 required
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Website URL *
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Website URL *</label>
               <input
                 type="url"
                 name="url"
@@ -132,112 +132,103 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
                 onChange={handleChange}
                 placeholder="https://example.com"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Icon URL
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Icon URL</label>
               <input
                 type="url"
                 name="icon"
                 value={formData.icon}
                 onChange={handleChange}
                 placeholder="https://example.com/icon.png"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
-            {/* Theme */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Primary Color
-                </label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Primary Color</label>
                 <input
                   type="color"
                   name="primaryColor"
                   value={formData.primaryColor}
                   onChange={handleChange}
-                  className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+                  className="h-10 w-full cursor-pointer rounded-lg border border-gray-300"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Accent Color
-                </label>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Accent Color</label>
                 <input
                   type="color"
                   name="accentColor"
                   value={formData.accentColor}
                   onChange={handleChange}
-                  className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+                  className="h-10 w-full cursor-pointer rounded-lg border border-gray-300"
                 />
               </div>
             </div>
 
-            {/* Features */}
             <div className="border-t pt-4">
-              <h3 className="font-semibold text-gray-800 mb-3">Features</h3>
+              <h3 className="mb-3 font-semibold text-gray-800">Features</h3>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     name="enableNativeSharing"
                     checked={formData.enableNativeSharing}
                     onChange={handleChange}
-                    className="w-4 h-4 rounded"
+                    className="h-4 w-4 rounded"
                   />
                   <span className="text-sm text-gray-700">Enable Native Sharing</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     name="enablePushNotifications"
                     checked={formData.enablePushNotifications}
                     onChange={handleChange}
-                    className="w-4 h-4 rounded"
+                    className="h-4 w-4 rounded"
                   />
                   <span className="text-sm text-gray-700">Enable Push Notifications</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     name="enableOfflineMode"
                     checked={formData.enableOfflineMode}
                     onChange={handleChange}
-                    className="w-4 h-4 rounded"
+                    className="h-4 w-4 rounded"
                   />
                   <span className="text-sm text-gray-700">Enable Offline Mode</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2">
                   <input
                     type="checkbox"
                     name="enableDeepLinking"
                     checked={formData.enableDeepLinking}
                     onChange={handleChange}
-                    className="w-4 h-4 rounded"
+                    className="h-4 w-4 rounded"
                   />
                   <span className="text-sm text-gray-700">Enable Deep Linking</span>
                 </label>
               </div>
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 pt-4 border-t">
+            <div className="flex gap-2 border-t pt-4">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                className="flex-1 rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 {isSubmitting ? 'Creating...' : 'Create App'}
               </button>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+                className="flex-1 rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-800 transition-colors hover:bg-gray-300"
               >
                 Cancel
               </button>

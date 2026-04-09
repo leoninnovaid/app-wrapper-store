@@ -1,6 +1,7 @@
-import axios from 'axios';
+﻿import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+const configuredBaseUrl = import.meta.env.VITE_API_URL?.trim();
+const API_BASE_URL = configuredBaseUrl && configuredBaseUrl.length > 0 ? configuredBaseUrl : '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -40,18 +41,14 @@ export interface Build {
   completedAt?: string;
 }
 
-// App endpoints
 export const appService = {
   getAll: () => api.get<AppConfig[]>('/apps'),
   getById: (id: string) => api.get<AppConfig>(`/apps/${id}`),
-  create: (data: Omit<AppConfig, 'id' | 'createdAt' | 'updatedAt'>) =>
-    api.post<AppConfig>('/apps', data),
-  update: (id: string, data: Partial<AppConfig>) =>
-    api.put<AppConfig>(`/apps/${id}`, data),
+  create: (data: Omit<AppConfig, 'id' | 'createdAt' | 'updatedAt'>) => api.post<AppConfig>('/apps', data),
+  update: (id: string, data: Partial<AppConfig>) => api.put<AppConfig>(`/apps/${id}`, data),
   delete: (id: string) => api.delete(`/apps/${id}`),
 };
 
-// Build endpoints
 export const buildService = {
   triggerBuild: (appId: string, platform: 'android' | 'ios' = 'android') =>
     api.post<Build>(`/apps/${appId}/build`, { platform }),
@@ -59,7 +56,6 @@ export const buildService = {
   getAppBuilds: (appId: string) => api.get<Build[]>(`/apps/${appId}/builds`),
 };
 
-// Health check
 export const healthCheck = () => api.get('/health');
 
 export default api;

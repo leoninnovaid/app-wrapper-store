@@ -1,13 +1,11 @@
-import React from 'react';
-
-export default function Header() {
+﻿export default function Header() {
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+    <header className="border-b border-gray-200 bg-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">📦</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+              <span className="text-lg font-bold text-white">AW</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">App Wrapper Store</h1>
@@ -20,7 +18,7 @@ export default function Header() {
               href="https://github.com/leoninnovaid/app-wrapper-store"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 font-medium text-sm"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               GitHub
             </a>
@@ -28,7 +26,7 @@ export default function Header() {
               href="https://github.com/leoninnovaid/app-wrapper-store/blob/main/README.md"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 font-medium text-sm"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               Docs
             </a>
