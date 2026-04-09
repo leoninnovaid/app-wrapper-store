@@ -7,7 +7,7 @@ App Wrapper Store is a modular system for creating native-looking Android and iO
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend Store                           │
-│              (Web Interface for Users)                       │
+│              (Web Interface for Users)                      │
 └────────────────────┬────────────────────────────────────────┘
                      │
                      ▼
@@ -145,13 +145,13 @@ EXPO_PUBLIC_ICON_URL          # App icon
 9. Injects configuration
    ↓
 10. Builds APK
-    ↓
+   ↓
 11. Uploads to storage
-    ↓
+   ↓
 12. Backend updates build status
-    ↓
+   ↓
 13. Frontend polls for status
-    ↓
+   ↓
 14. Download link becomes available
 ```
 
