@@ -1,0 +1,25 @@
+﻿name: Android Release Dry Run
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release-dry-run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wrapper-template
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+      - run: npm install --no-audit --no-fund
+      - run: gem install fastlane
+      - run: fastlane android ci_dry_run

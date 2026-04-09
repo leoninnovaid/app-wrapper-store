@@ -1,6 +1,8 @@
-﻿import { useState, type ChangeEvent, type FormEvent } from 'react';
+﻿import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { appService } from '../services/api';
 import { useAppStore } from '../store/appStore';
+import InlineError from './InlineError';
+import { toUiError } from '../utils/error-utils';
 
 interface CreateAppFormProps {
   onSuccess: () => void;
@@ -33,10 +35,14 @@ const initialFormData: FormData = {
 };
 
 export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
-  const { addApp, setError } = useAppStore();
+  const addApp = useAppStore((state) => state.addApp);
+  const pushError = useAppStore((state) => state.pushError);
+  const clearScope = useAppStore((state) => state.clearScope);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<FormData>(initialFormData);
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const target = event.target;
@@ -48,8 +54,8 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
     }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = async () => {
+    clearScope('create-app');
 
     try {
       setIsSubmitting(true);
@@ -73,21 +79,35 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
 
       addApp(response.data);
       setFormData(initialFormData);
+      clearScope('create-app');
       setIsOpen(false);
       onSuccess();
-    } catch (err) {
-      setError('Failed to create app');
-      console.error(err);
+    } catch (error) {
+      pushError(
+        toUiError(error, {
+          scope: 'create-app',
+          fallbackMessage: 'Failed to create app. Please review your input and try again.',
+          retryable: true,
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await submit();
   };
 
   return (
     <div className="mb-6">
       {!isOpen ? (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            clearScope('create-app');
+            setIsOpen(true);
+          }}
           className="w-full rounded-lg bg-primary px-4 py-3 font-semibold text-white transition-colors hover:bg-primary/90"
         >
           + Create New App
@@ -96,7 +116,14 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-lg">
           <h2 className="mb-4 text-2xl font-bold text-gray-800">Create New App</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+            <InlineError
+              scope="create-app"
+              onRetry={() => {
+                formRef.current?.requestSubmit();
+              }}
+            />
+
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">App Name *</label>
               <input
@@ -227,7 +254,10 @@ export default function CreateAppForm({ onSuccess }: CreateAppFormProps) {
               </button>
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={() => {
+                  clearScope('create-app');
+                  setIsOpen(false);
+                }}
                 className="flex-1 rounded-lg bg-gray-200 px-4 py-2 font-semibold text-gray-800 transition-colors hover:bg-gray-300"
               >
                 Cancel

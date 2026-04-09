@@ -10,6 +10,13 @@ const api = axios.create({
   },
 });
 
+export interface ApiErrorPayload {
+  code: string;
+  message: string;
+  details?: unknown;
+  traceId?: string;
+}
+
 export interface AppConfig {
   id: string;
   name: string;
@@ -26,6 +33,7 @@ export interface AppConfig {
     enableNativeSharing?: boolean;
     enableDeepLinking?: boolean;
   };
+  currentVersion?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +49,58 @@ export interface Build {
   completedAt?: string;
 }
 
+export interface BuildLog {
+  id: string;
+  buildId: string;
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  details?: string;
+  createdAt: string;
+}
+
+export interface AppSource {
+  id: string;
+  appId: string;
+  sourceType: 'github' | 'fdroid' | 'gitlab' | 'custom';
+  sourceUrl: string;
+  metadata?: {
+    title?: string;
+    owner?: string;
+    description?: string;
+  };
+  createdAt: string;
+}
+
+export interface ReleaseArtifact {
+  name: string;
+  type: 'apk' | 'aab' | 'ipa' | 'other';
+  platform: 'android' | 'ios' | 'any';
+  url: string;
+  size: number;
+  checksum?: string;
+  verificationStatus: 'verified' | 'unverified' | 'blocked';
+  reason?: string;
+}
+
+export interface SourceRelease {
+  version: string;
+  tag: string;
+  publishedAt: string;
+  notes?: string;
+  artifacts: ReleaseArtifact[];
+}
+
+export interface UpdateCheckResult {
+  appId: string;
+  status: 'update_available' | 'no_update' | 'blocked';
+  checkedAt: string;
+  sourceType?: 'github' | 'fdroid' | 'gitlab' | 'custom';
+  sourceUrl?: string;
+  release?: SourceRelease;
+  artifact?: ReleaseArtifact;
+  reason?: string;
+}
+
 export const appService = {
   getAll: () => api.get<AppConfig[]>('/apps'),
   getById: (id: string) => api.get<AppConfig>(`/apps/${id}`),
@@ -54,6 +114,22 @@ export const buildService = {
     api.post<Build>(`/apps/${appId}/build`, { platform }),
   getStatus: (buildId: string) => api.get<Build>(`/builds/${buildId}`),
   getAppBuilds: (appId: string) => api.get<Build[]>(`/apps/${appId}/builds`),
+  getLogs: (buildId: string) => api.get<BuildLog[]>(`/builds/${buildId}/logs`),
+  retry: (buildId: string) => api.post<Build>(`/builds/${buildId}/retry`),
+};
+
+export const sourceService = {
+  validate: (sourceType: AppSource['sourceType'], sourceUrl: string) =>
+    api.post('/sources/validate', { sourceType, sourceUrl }),
+  attachToApp: (appId: string, sourceType: AppSource['sourceType'], sourceUrl: string) =>
+    api.post<AppSource>(`/apps/${appId}/sources`, { sourceType, sourceUrl }),
+};
+
+export const updateService = {
+  get: (appId: string, platform: 'android' | 'ios' = 'android') =>
+    api.get<UpdateCheckResult>(`/apps/${appId}/updates`, { params: { platform } }),
+  check: (appId: string, platform: 'android' | 'ios' = 'android') =>
+    api.post<UpdateCheckResult>(`/apps/${appId}/updates/check`, { platform }),
 };
 
 export const healthCheck = () => api.get('/health');

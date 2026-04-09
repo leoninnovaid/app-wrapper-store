@@ -1,0 +1,27 @@
+﻿default_platform(:android)
+
+platform :android do
+  desc "Dry run lane used in CI to validate release prerequisites"
+  lane :ci_dry_run do
+    UI.message("Running Android release dry-run checks")
+    sh("node -v")
+    sh("npm -v")
+    UI.success("Dry-run completed. For production release, provide signing and store credentials.")
+  end
+
+  desc "Release lane scaffold for signed Android artifacts"
+  lane :release do
+    unless ENV["ANDROID_KEYSTORE_BASE64"] && ENV["ANDROID_KEY_ALIAS"]
+      UI.user_error!("Missing Android signing environment variables")
+    end
+
+    UI.message("Android release scaffold is configured. Integrate EAS/Fastlane build/upload in next sprint.")
+  end
+end
+
+platform :ios do
+  desc "iOS lane scaffold"
+  lane :scaffold do
+    UI.message("iOS release lane scaffolded. iOS automation will follow Android stabilization.")
+  end
+end

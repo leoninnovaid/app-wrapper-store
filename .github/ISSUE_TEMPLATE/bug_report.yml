@@ -1,0 +1,67 @@
+﻿name: Bug report
+description: Report a bug with reproducible steps, expected behavior, and trace information.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: What is failing?
+      placeholder: Build action fails with visible inline error
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro_steps
+    attributes:
+      label: Reproduction steps
+      description: Provide exact steps to reproduce the issue.
+      placeholder: |
+        1. Open app list
+        2. Click Build APK
+        3. Observe error banner
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened?
+    validations:
+      required: true
+
+  - type: input
+    id: trace_id
+    attributes:
+      label: Trace ID (if visible)
+      description: Copy the trace ID shown in the error UI if available.
+      placeholder: 123e4567-e89b-12d3-a456-426614174000
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 - production broken
+        - P1 - core flow blocked
+        - P2 - degraded behavior
+        - P3 - minor issue
+    validations:
+      required: true
+
+  - type: textarea
+    id: prevention
+    attributes:
+      label: Suggested prevention
+      description: Optional: how should we prevent this regression?

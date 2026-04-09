@@ -1,6 +1,9 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { AppConfig, appService, buildService } from '../services/api';
 import { useAppStore } from '../store/appStore';
+import { extractTargetId, UiError } from '../types/errors';
+import { toUiError } from '../utils/error-utils';
+import InlineError from './InlineError';
 
 interface AppCardProps {
   app: AppConfig;
@@ -8,35 +11,60 @@ interface AppCardProps {
 }
 
 export default function AppCard({ app, onRefresh }: AppCardProps) {
-  const { deleteApp } = useAppStore();
+  const deleteApp = useAppStore((state) => state.deleteApp);
+  const pushError = useAppStore((state) => state.pushError);
+  const clearScope = useAppStore((state) => state.clearScope);
+
   const [isBuilding, setIsBuilding] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [buildNotice, setBuildNotice] = useState<string | null>(null);
+
+  const targetMatcher = useMemo(
+    () => (error: UiError) => extractTargetId(error.details) === app.id,
+    [app.id],
+  );
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${app.name}"?`)) {
       return;
     }
 
+    clearScope('delete-app');
+
     try {
       await appService.delete(app.id);
       deleteApp(app.id);
       onRefresh();
-    } catch (err) {
-      console.error('Failed to delete app', err);
-      alert('Failed to delete app');
+    } catch (error) {
+      pushError(
+        toUiError(error, {
+          scope: 'delete-app',
+          fallbackMessage: `Failed to delete ${app.name}.`,
+          retryable: true,
+          details: { targetId: app.id },
+        }),
+      );
     }
   };
 
   const handleBuild = async () => {
+    clearScope('build-app');
+    setBuildNotice(null);
+
     try {
       setIsBuilding(true);
       const response = await buildService.triggerBuild(app.id, 'android');
-      console.log('Build started:', response.data);
-      alert('Build started. Check back soon for a download link.');
+      setBuildNotice(`Build started (id: ${response.data.id}). Refresh later for download status.`);
       onRefresh();
-    } catch (err) {
-      console.error('Failed to start build', err);
-      alert('Failed to start build');
+    } catch (error) {
+      pushError(
+        toUiError(error, {
+          scope: 'build-app',
+          fallbackMessage: `Failed to start build for ${app.name}.`,
+          retryable: true,
+          details: { targetId: app.id },
+        }),
+      );
     } finally {
       setIsBuilding(false);
     }
@@ -69,11 +97,7 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
 
       {app.theme?.primaryColor && (
         <div className="mb-3 flex gap-2">
-          <div
-            className="h-6 w-6 rounded"
-            style={{ backgroundColor: app.theme.primaryColor }}
-            title="Primary Color"
-          />
+          <div className="h-6 w-6 rounded" style={{ backgroundColor: app.theme.primaryColor }} title="Primary Color" />
           {app.theme.accentColor && (
             <div
               className="h-6 w-6 rounded border border-gray-300"
@@ -86,25 +110,30 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
 
       <div className="mb-3 flex gap-2">
         <button
-          onClick={() => setShowDetails(!showDetails)}
+          onClick={() => setShowDetails((visible) => !visible)}
           className="flex-1 rounded-lg bg-gray-100 px-3 py-2 text-sm transition-colors hover:bg-gray-200"
         >
           {showDetails ? 'Hide' : 'Details'}
         </button>
         <button
-          onClick={handleBuild}
+          onClick={() => void handleBuild()}
           disabled={isBuilding}
           className="flex-1 rounded-lg bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {isBuilding ? 'Building...' : 'Build APK'}
         </button>
         <button
-          onClick={handleDelete}
+          onClick={() => void handleDelete()}
           className="rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-200"
         >
           Delete
         </button>
       </div>
+
+      <InlineError scope="build-app" matcher={targetMatcher} onRetry={() => void handleBuild()} className="mb-2" />
+      <InlineError scope="delete-app" matcher={targetMatcher} onRetry={() => void handleDelete()} className="mb-2" />
+
+      {buildNotice && <p className="mb-2 rounded-md bg-green-50 px-3 py-2 text-xs text-green-700">{buildNotice}</p>}
 
       {showDetails && (
         <div className="border-t pt-3 text-sm text-gray-600">

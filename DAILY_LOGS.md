@@ -1,128 +1,73 @@
-# App Wrapper Store - Daily Development Logs
+﻿# App Wrapper Store - Daily Logs v3
 
-Tägliche Protokollierung aller Verbesserungen, Features und Optimierungen für optimale Nutzer-Erfahrung.
+## Log template (required)
 
----
-
-## 2026-04-03 (Tag 1)
-
-**Datum:** 2026-04-03  
-**Fokus:** Projekt-Setup und Grundstruktur
-
-### ✅ Abgeschlossene Aufgaben
-
-| Task | Status | Timestamp | Notizen |
-|------|--------|-----------|---------|
-| Backend API Struktur erstellen | ✅ | 18:14 | Express.js Server mit REST-Endpoints |
-| WebView Wrapper Template | ✅ | 18:15 | React Native WebView-Komponente |
-| Beispiel-Konfiguration (ChatGPT) | ✅ | 18:16 | JSON-Konfiguration für PoC |
-| Dokumentation (ARCHITECTURE.md) | ✅ | 18:17 | Detaillierte Architektur-Übersicht |
-| Contributing Guidelines | ✅ | 18:18 | CONTRIBUTING.md mit Best Practices |
-| GitHub Repository Setup | ✅ | 18:19 | Repo erstellt und Code gepusht |
-| Daily Log System | ✅ | 18:20 | Dieses Protokoll |
-
-### 🔧 Verbesserungen & Optimierungen
-
-- ✅ Backend API mit vollständiger CRUD-Funktionalität
-- ✅ WebView Security-Einstellungen optimiert
-- ✅ Error Handling in Backend implementiert
-- ✅ TypeScript für Type-Safety konfiguriert
-- ✅ MIT License hinzugefügt
-
-### 📊 Metriken
-
-| Metrik | Wert |
-|--------|------|
-| Dateien erstellt | 12 |
-| Lines of Code | ~800 |
-| API-Endpoints | 7 |
-| Komponenten | 1 (WebView Wrapper) |
-| Dokumentation | 2 Dateien |
-
-### ⏭️ Nächste Schritte (Priorität)
-
-1. **Frontend Store UI** - React-basiertes Interface für App-Verwaltung
-2. **App Generator** - Tool zum Generieren von APK-Dateien
-3. **Datenbank-Integration** - PostgreSQL Setup
-4. **Build Pipeline** - Expo CLI Integration
-5. **Testing Framework** - Unit & Integration Tests
-
-### 💡 Notizen
-
-- Proof-of-Concept mit ChatGPT Codex als Beispiel
-- Architektur ist modular und skalierbar
-- Open-Source und Community-ready
-- Nächste Phase: Frontend Development
+- Date (UTC)
+- Focus area
+- Changes completed
+- Failures observed
+- Root cause
+- Fix applied
+- Verification evidence
+- Prevention action
+- Next actions
 
 ---
 
-## Legende
+## 2026-04-09
 
-| Symbol | Bedeutung |
-|--------|-----------|
-| ✅ | Abgeschlossen |
-| 🔧 | In Bearbeitung |
-| ⏳ | Ausstehend |
-| ❌ | Blockiert |
+**Focus:** Masterplan v3 implementation baseline (G1/G2/G3/G4 foundations)
 
----
+### Completed changes
 
-## 2026-04-04 (Tag 2)
+- Implemented frontend error architecture with typed `UiError` model.
+- Added global error banner and inline scoped error components with retry.
+- Removed alert-based error reporting and replaced with UI-visible failure flow.
+- Standardized backend error responses to `{ code, message, details?, traceId? }`.
+- Added request trace IDs via middleware and structured JSON logging.
+- Added SQLite-backed persistence layer for apps, builds, sources, and build logs.
+- Added source adapter contract and GitHub adapter implementation.
+- Added scaffold adapters for F-Droid, GitLab, and custom sources.
+- Added source validation, source attach, and update-check endpoints.
+- Added backend integration tests and frontend unit/component tests.
+- Added CI workflow, release dry-run workflow, and Fastlane scaffolding.
+- Added debug playbook, source matrix, release checklist, and issue templates.
 
-**Datum:** 2026-04-04  
-**Fokus:** Frontend Store UI Development
+### Failures observed
 
-### ✅ Abgeschlossene Aufgaben
+- Missing frontend/ backend directories during parallel file writes (race condition).
+- File lock while editing backend entrypoint during active process.
+- Node-engine warnings on initially installed package versions.
 
-| Task | Status | Timestamp | Notizen |
-|------|--------|-----------|----------|
-| React + Vite Setup | ✅ | 19:30 | TypeScript + Tailwind konfiguriert |
-| API Service | ✅ | 19:35 | Typed API endpoints mit Axios |
-| Zustand Store | ✅ | 19:40 | Global state management |
-| Header Component | ✅ | 19:45 | Navigation mit GitHub/Docs Links |
-| CreateAppForm Component | ✅ | 20:00 | Vollständiges Formular mit Validierung |
-| AppList Component | ✅ | 20:10 | Listing mit Search/Filter |
-| AppCard Component | ✅ | 20:20 | Card mit Build/Delete Actions |
-| Styling & Tailwind | ✅ | 20:30 | Responsive Design, Custom Colors |
-| Frontend Commit | ✅ | 20:35 | Gepusht zu GitHub |
+### Root causes
 
-### 🔧 Verbesserungen & Optimierungen
+- Parallel tool calls attempted writes before directory creation completed.
+- Process retained handle on edited file.
+- Package versions auto-resolved to ranges with stricter Node requirements.
 
-- ✅ Responsive Grid Layout (1/2/3 Spalten)
-- ✅ Error Handling mit Alert-Banner
-- ✅ Loading States für Buttons
-- ✅ Color Picker für Theme-Farben
-- ✅ Expandable Details in App Cards
-- ✅ Search/Filter Funktionalität
-- ✅ API Proxy für Development
-- ✅ Health Check on App Mount
+### Fixes applied
 
-### 📊 Metriken
+- Switched to ordered directory creation and sequential writes for dependent files.
+- Stopped active node watcher processes before rewriting locked files.
+- Pinned compatible package versions (`vitest@0.34.6`, `jsdom@22.1.0`, `sqlite3@5.1.7`).
 
-| Metrik | Wert |
-|--------|------|
-| Dateien erstellt | 18 |
-| React Components | 5 |
-| Lines of Code | ~1200 |
-| API Endpoints integriert | 7 |
-| Tailwind Classes | 150+ |
+### Verification evidence
 
-### ⏭️ Nächste Schritte (Priorität)
+- Local checks expected and executed after implementation:
+  - Frontend: lint, build, test
+  - Backend: build, test
+  - App generator: build
+- CI workflows committed to run equivalent checks on PR/main.
 
-1. **App Generator** - Expo CLI Integration für APK-Generierung
-2. **Build Status Tracker** - Real-time Build Progress
-3. **Download Manager** - APK Download & Management
-4. **Datenbank Integration** - PostgreSQL Setup
-5. **Error Handling** - Bessere Fehlerbehandlung im Frontend
+### Prevention actions
 
-### 💡 Notizen
+- Added deterministic CI checks for all modules.
+- Added debug/release runbooks and issue template requiring trace IDs.
+- Added explicit release checklist and DoD criteria in tracker docs.
 
-- Frontend ist produktionsreif und benutzerfreundlich
-- API Integration funktioniert nahtlos
-- Responsive Design für Mobile & Desktop
-- State Management ist sauber und wartbar
-- Nächste Phase: Backend-Integration für Builds
+### Next actions
 
----
-
-
+1. Implement production-grade F-Droid/GitLab adapters.
+2. Add source/update frontend screens.
+3. Expand regression tests to full end-to-end flows.
+4. Integrate signed artifact publishing in release lane.

@@ -1,194 +1,102 @@
-# App Wrapper Store - Meta Plan
+﻿# App Wrapper Store - Meta Plan v3
 
-**Projekt:** Open-Source Platform zum Erstellen von Android/iOS Apps aus Websites  
-**Vision:** Dezentralisierter App-Store ohne Werbung, vollständig Open-Source  
-**Startdatum:** 2026-04-03
+## Vision
 
----
+Open, modular, Android-first app wrapper platform with flexible source adapters, transparent failure reporting, and reproducible delivery pipelines.
 
-## 🎯 Langfristige Ziele
+## Product principles
 
-| Ziel | Status | Priorität |
-|------|--------|-----------|
-| Backend API vollständig | ✅ | High |
-| Frontend Store Interface | ✅ | High |
-| APK Generator funktional | 🔧 | High |
-| Datenbank Integration | ⏳ | High |
-| Testing Framework | ⏳ | Medium |
-| iOS Support (IPA) | ⏳ | Medium |
-| Community Features | ⏳ | Low |
+- Open architecture: adapter-based source integrations, no source lock-in.
+- Monolith-first modularity: keep one deployable backend, isolate modules by contract.
+- Reliability over feature sprawl: Android release confidence is the first objective.
+- Error transparency: every critical failure must be visible in UI and traceable in logs.
+- Test-gated delivery: PR merge and release require explicit check gates.
 
----
+## Locked decisions
 
-## 📅 Sprint-Planung
+1. Android reliability is the primary milestone.
+2. CI/CD standard: GitHub Actions + Fastlane.
+3. Persistence strategy: SQLite-first with repository abstraction for later PostgreSQL migration.
+4. Error UX standard: global banner + inline module error with retry.
 
-### Sprint 1: Foundation (2026-04-03 - 2026-04-05)
-**Ziel:** Basis-Infrastruktur und Backend fertigstellen
+## Milestones
 
-**Aufgaben:**
-- ✅ Backend API Setup
-- ✅ WebView Wrapper Template
-- ✅ Dokumentation
-- ✅ Frontend Store UI (React + Vite)
-- 🔧 Datenbank Schema
+### G1 (2026-04-09 to 2026-04-15) - Error transparency and planning refactor
 
-**Erfolgs-Kriterien:**
-- Backend läuft und API funktioniert
-- Frontend kann Apps auflisten
-- Dokumentation ist aktuell
+- Implement `UiError` model and scoped/global error architecture in frontend.
+- Replace alert/console-only failures with actionable UI error blocks.
+- Standardize backend error payload contract: `{ code, message, details?, traceId? }`.
+- Add tests for error store and error components.
 
-### Sprint 2: Frontend & Generator (2026-04-06 - 2026-04-10)
-**Ziel:** Benutzeroberfläche und APK-Generierung
+Acceptance gates:
 
-**Aufgaben:**
-- ✅ React Frontend App
-- ✅ App Creation Wizard
-- 🔧 Expo CLI Integration
-- ⏳ Build Status Tracking
-- ⏳ Download Management
+- Every API failure is visible in UI (global and scoped).
+- Backend returns `traceId` on error responses.
+- Frontend lint/build/test and backend build/test are green.
 
-**Erfolgs-Kriterien:**
-- Frontend ist benutzerfreundlich
-- APK-Generierung funktioniert
-- Build Status wird angezeigt
+### G2 (2026-04-16 to 2026-04-22) - Modular source adapters
 
-### Sprint 3: Database & Testing (2026-04-11 - 2026-04-15)
-**Ziel:** Persistente Datenspeicherung und Qualitätssicherung
+- Introduce source adapter interface and source matrix.
+- Ship GitHub adapter implementation.
+- Scaffold F-Droid/GitLab/custom adapters with explicit status and reasons.
+- Add source validation and app-source attachment endpoints.
 
-**Aufgaben:**
-- ⏳ PostgreSQL Setup
-- ⏳ Migrations
-- ⏳ Unit Tests
-- ⏳ Integration Tests
-- ⏳ Performance Optimization
+Acceptance gates:
 
-**Erfolgs-Kriterien:**
-- Alle Daten werden persistent gespeichert
-- Test Coverage > 80%
-- Performance ist akzeptabel
+- Source URL can be validated and attached to an app.
+- Release metadata can be normalized from GitHub source.
 
-### Sprint 4: Polish & Deployment (2026-04-16 - 2026-04-20)
-**Ziel:** Production-Ready und Deployment
+### G3 (2026-04-23 to 2026-04-29) - Update trust and artifact selection
 
-**Aufgaben:**
-- ⏳ Security Audit
-- ⏳ Error Handling
-- ⏳ Logging & Monitoring
-- ⏳ Docker Setup
-- ⏳ Deployment Guide
+- Add update check endpoints and deterministic artifact selection.
+- Add verification states (`verified`, `unverified`, `blocked`).
+- Return blocked reasons for non-installable release states.
 
-**Erfolgs-Kriterien:**
-- App ist produktionsreif
-- Security ist gewährleistet
-- Deployment ist dokumentiert
+Acceptance gates:
 
----
+- Update-check result is deterministic and includes explicit reason for blocked state.
+- Android artifact prioritization is stable (`apk` -> `aab`).
 
-## 🔄 Tägliche Verbesserungen
+### G4 (2026-04-30 to 2026-05-06) - Delivery pipeline
 
-### Täglich durchzuführende Aufgaben
+- Add CI workflow for frontend/backend/app-generator.
+- Add Fastlane scaffolding with Android release lane and iOS scaffold lane.
+- Add release checklist and dry-run workflow.
 
-**Morgens (09:00 UTC):**
-- [ ] Review gestrige Logs
-- [ ] Prioritäten für heute setzen
-- [ ] Blockers identifizieren
+Acceptance gates:
 
-**Tagsüber:**
-- [ ] Feature Development
-- [ ] Bug Fixes
-- [ ] Code Review
-- [ ] Testing
+- CI passes on PR and main.
+- Fastlane dry run executes in release workflow.
 
-**Abends (18:00 UTC):**
-- [ ] Daily Log aktualisieren
-- [ ] Task Tracker abhaken
-- [ ] Nächste Schritte planen
-- [ ] Commit & Push
+### G5 (2026-05-07 to 2026-05-14) - Stabilization and operations
 
-### Wöchentliche Reviews
+- Add debug playbook and bug-report template.
+- Enforce root-cause + prevention logging workflow.
+- Prioritize regression coverage for core flows.
 
-**Freitags:**
-- [ ] Sprint Review
-- [ ] Retrospektive
-- [ ] Nächste Woche planen
+Acceptance gates:
 
----
+- No open P0/P1 defects for release candidate.
+- Release checklist and daily logs are updated for each stabilization cycle.
 
-## 🚀 Nächste Schritte (Priorität)
+## Public interface commitments
 
-### Heute (2026-04-04)
-1. 🔧 App Generator - Expo CLI Integration für APK-Generierung
-2. ⏳ Build Status Tracker - Real-time Build Progress
-3. ⏳ Download Manager - APK Download & Management
-4. ⏳ Database Schema - PostgreSQL Setup
+- `ErrorScope`: `global | create-app | load-apps | build-app | delete-app | source-validate | update-check | release`
+- `UiError`: `{ id, scope, code, message, details?, traceId?, retryable, createdAt, category }`
+- Frontend store actions: `pushError`, `clearError`, `clearScope`, `clearAllErrors`
+- Source adapter contract: `validate`, `fetchMetadata`, `listReleases`, `pickInstallableArtifact`, `verifyArtifact`
+- Backend API error format: `{ code, message, details?, traceId? }`
 
-### Morgen (2026-04-05)
-1. **Build Status Tracker** - Real-time Build Progress UI
-2. **Download Manager** - APK Download & Management
-3. **Database Schema** - PostgreSQL Setup
-4. **Backend Integration** - Expo CLI Backend Integration
+## KPI targets
 
-### Diese Woche (2026-04-03 - 2026-04-07)
-1. ✅ Frontend Store vollständig
-2. 🔧 App Generator Grundstruktur
-3. 🔧 Datenbank Schema
-4. 🔧 Erste End-to-End Tests
+- API p95 response: < 300 ms for app CRUD
+- Build trigger success: > 99%
+- Visible-error compliance: 100% for critical failures
+- CI pass rate on main: > 95%
+- P0/P1 aging: 0 open defects at release checkpoint
 
-### Nächste Woche (2026-04-08 - 2026-04-14)
-1. APK-Generierung funktional
-2. Build Pipeline optimiert
-3. Database Integration
-4. Performance Tuning
+## Operating cadence
 
----
-
-## 📊 Metriken & KPIs
-
-| Metrik | Ziel | Aktuell |
-|--------|------|---------|
-| API Response Time | < 200ms | - |
-| Build Time | < 5min | - |
-| Test Coverage | > 80% | - |
-| Code Quality | A | - |
-| Uptime | 99.9% | - |
-
----
-
-## 🛠️ Technologie-Stack
-
-| Layer | Technologie | Status |
-|-------|-------------|--------|
-| Backend | Express.js + TypeScript | ✅ |
-| Frontend | React + Vite | ✅ |
-| Mobile | React Native + Expo | ✅ |
-| Database | PostgreSQL | ⏳ |
-| Build | Expo CLI | 🔧 |
-| Testing | Vitest | ⏳ |
-| Deployment | Docker | ⏳ |
-
----
-
-## 📝 Notizen
-
-- **Open Source First:** Alles ist öffentlich und transparent
-- **Community Driven:** Contributions sind willkommen
-- **User-Centric:** Fokus auf beste Nutzer-Erfahrung
-- **Quality:** Hohe Code-Qualität und Tests
-- **Documentation:** Alles ist dokumentiert
-
----
-
-## 🎓 Lessons Learned
-
-*(Wird täglich aktualisiert)*
-
-- Tag 1: Backend API ist schnell zu implementieren mit Express
-- Tag 1: WebView Security ist wichtig für Nutzer-Vertrauen
-- Tag 1: Gute Dokumentation spart später Zeit
-- Tag 2: Expo CLI Integration funktioniert gut mit Build Queue System
-- Tag 2: Error Handling ist kritisch für Production Readiness
-
----
-
-**Letzter Update:** 2026-04-04 06:05 UTC  
-**Nächster Update:** Täglich
+- Daily: triage errors, update daily log, close blockers.
+- Weekly: review milestone gates, regression status, and release-readiness.
+- Per release: run checklist in `docs/RELEASE_CHECKLIST.md`.

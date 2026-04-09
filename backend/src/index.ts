@@ -1,267 +1,488 @@
 ﻿import cors from 'cors';
 import dotenv from 'dotenv';
 import express, { NextFunction, Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { SourceAdapter } from './adapters/source-adapter';
+import { ApiError, isApiError } from './errors/api-error';
+import { requestContextMiddleware } from './middleware/request-context';
+import { SqliteStoreRepository } from './repositories/sqlite-store-repository';
+import { getSourceAdapter } from './services/source-registry';
+import { checkForUpdates } from './services/update-service';
+import { Build, NewAppInput, Platform, SourceType } from './types/domain';
+import { logger } from './utils/logger';
 
 dotenv.config();
 
-const app = express();
+const repository = new SqliteStoreRepository();
 const PORT = Number(process.env.PORT ?? 3000);
 
-type BuildStatus = 'pending' | 'building' | 'completed' | 'failed';
-type Platform = 'android' | 'ios';
-
-interface AppConfig {
-  id: string;
-  name: string;
-  description: string;
-  url: string;
-  icon?: string;
-  theme?: {
-    primaryColor?: string;
-    accentColor?: string;
-  };
-  features?: {
-    enablePushNotifications?: boolean;
-    enableOfflineMode?: boolean;
-    enableNativeSharing?: boolean;
-    enableDeepLinking?: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Build {
-  id: string;
-  appId: string;
-  status: BuildStatus;
-  platform: Platform;
-  downloadUrl?: string;
-  error?: string;
-  createdAt: string;
-  completedAt?: string;
-}
-
-const apps = new Map<string, AppConfig>();
-const builds = new Map<string, Build>();
-
-app.use(cors());
-app.use(express.json());
-
-const isValidUrl = (value: string): boolean => {
+function isValidHttpUrl(value: string): boolean {
   try {
     const parsed = new URL(value);
     return parsed.protocol === 'http:' || parsed.protocol === 'https:';
   } catch {
     return false;
   }
-};
+}
 
-const normalizePlatform = (value: unknown): Platform => {
+function inferSourceType(sourceUrl: string): SourceType {
+  const normalized = sourceUrl.toLowerCase();
+  if (normalized.includes('github.com')) {
+    return 'github';
+  }
+
+  if (normalized.includes('f-droid') || normalized.includes('fdroid')) {
+    return 'fdroid';
+  }
+
+  return 'custom';
+}
+
+function normalizeSourceType(value: unknown, sourceUrl: string): SourceType {
+  const inferred = inferSourceType(sourceUrl);
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    return inferred;
+  }
+
+  const sourceType = value.trim().toLowerCase();
+  const allowed: SourceType[] = ['github', 'fdroid', 'gitlab', 'custom'];
+  if (!allowed.includes(sourceType as SourceType)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `Unsupported sourceType: ${value}`);
+  }
+
+  return sourceType as SourceType;
+}
+
+function normalizePlatform(value: unknown): Platform {
   if (value === 'ios') {
     return 'ios';
   }
+
   return 'android';
-};
+}
 
-const inferDownloadExtension = (platform: Platform): string => {
+function buildDownloadExtension(platform: Platform): 'apk' | 'ipa' {
   return platform === 'ios' ? 'ipa' : 'apk';
-};
+}
 
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+type AsyncRoute = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 
-app.post('/api/apps', (req: Request, res: Response) => {
-  try {
-    const { name, description, url, icon, theme, features } = req.body as Partial<AppConfig>;
+function asyncHandler(handler: AsyncRoute) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    handler(req, res, next).catch(next);
+  };
+}
 
-    const trimmedName = (name ?? '').trim();
-    const trimmedDescription = (description ?? '').trim();
-    const trimmedUrl = (url ?? '').trim();
-
-    if (!trimmedName || !trimmedDescription || !trimmedUrl) {
-      return res.status(400).json({ error: 'Name, description, and URL are required' });
-    }
-
-    if (!isValidUrl(trimmedUrl)) {
-      return res.status(400).json({ error: 'URL must be a valid http/https address' });
-    }
-
-    const now = new Date().toISOString();
-    const appConfig: AppConfig = {
-      id: uuidv4(),
-      name: trimmedName,
-      description: trimmedDescription,
-      url: trimmedUrl,
-      icon,
-      theme,
-      features,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    apps.set(appConfig.id, appConfig);
-    return res.status(201).json(appConfig);
-  } catch (error) {
-    console.error('Failed to create app', error);
-    return res.status(500).json({ error: 'Failed to create app' });
+function requireString(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} must be a string`);
   }
-});
 
-app.get('/api/apps', (_req: Request, res: Response) => {
-  try {
-    return res.json(Array.from(apps.values()));
-  } catch (error) {
-    console.error('Failed to fetch apps', error);
-    return res.status(500).json({ error: 'Failed to fetch apps' });
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${fieldName} is required`);
   }
-});
 
-app.get('/api/apps/:id', (req: Request, res: Response) => {
-  try {
-    const found = apps.get(req.params.id);
+  return trimmed;
+}
 
-    if (!found) {
-      return res.status(404).json({ error: 'App not found' });
-    }
+async function simulateBuildCompletion(build: Build, traceId: string): Promise<void> {
+  const extension = buildDownloadExtension(build.platform);
 
-    return res.json(found);
-  } catch (error) {
-    console.error('Failed to fetch app', error);
-    return res.status(500).json({ error: 'Failed to fetch app' });
-  }
-});
+  await repository.addBuildLog(build.id, 'info', 'Build job started', `platform=${build.platform}`);
 
-app.put('/api/apps/:id', (req: Request, res: Response) => {
-  try {
-    const existing = apps.get(req.params.id);
-
-    if (!existing) {
-      return res.status(404).json({ error: 'App not found' });
-    }
-
-    const incoming = req.body as Partial<AppConfig>;
-
-    if (incoming.url && !isValidUrl(incoming.url)) {
-      return res.status(400).json({ error: 'URL must be a valid http/https address' });
-    }
-
-    const updated: AppConfig = {
-      ...existing,
-      ...incoming,
-      id: existing.id,
-      createdAt: existing.createdAt,
-      updatedAt: new Date().toISOString(),
-    };
-
-    apps.set(existing.id, updated);
-    return res.json(updated);
-  } catch (error) {
-    console.error('Failed to update app', error);
-    return res.status(500).json({ error: 'Failed to update app' });
-  }
-});
-
-app.delete('/api/apps/:id', (req: Request, res: Response) => {
-  try {
-    if (!apps.has(req.params.id)) {
-      return res.status(404).json({ error: 'App not found' });
-    }
-
-    apps.delete(req.params.id);
-    return res.json({ message: 'App deleted successfully' });
-  } catch (error) {
-    console.error('Failed to delete app', error);
-    return res.status(500).json({ error: 'Failed to delete app' });
-  }
-});
-
-app.post('/api/apps/:id/build', (req: Request, res: Response) => {
-  try {
-    const appId = req.params.id;
-    const platform = normalizePlatform(req.body?.platform);
-
-    if (!apps.has(appId)) {
-      return res.status(404).json({ error: 'App not found' });
-    }
-
-    const buildId = uuidv4();
-    const now = new Date().toISOString();
-
-    const build: Build = {
-      id: buildId,
-      appId,
-      status: 'building',
-      platform,
-      createdAt: now,
-    };
-
-    builds.set(buildId, build);
-
-    setTimeout(() => {
-      const existing = builds.get(buildId);
-      if (!existing) {
-        return;
-      }
-
-      const extension = inferDownloadExtension(existing.platform);
-      const completed: Build = {
-        ...existing,
+  setTimeout(async () => {
+    try {
+      const completedBuild: Partial<Build> = {
         status: 'completed',
-        downloadUrl: `/downloads/${buildId}.${extension}`,
         completedAt: new Date().toISOString(),
+        downloadUrl: `/downloads/${build.id}.${extension}`,
+        error: undefined,
       };
 
-      builds.set(buildId, completed);
-    }, 5000);
+      await repository.updateBuild(build.id, completedBuild);
+      await repository.addBuildLog(build.id, 'info', 'Build job finished', `downloadUrl=/downloads/${build.id}.${extension}`);
 
-    return res.status(201).json(build);
-  } catch (error) {
-    console.error('Failed to start build', error);
-    return res.status(500).json({ error: 'Failed to start build' });
+      logger.info('Build completed', {
+        traceId,
+        buildId: build.id,
+        appId: build.appId,
+        platform: build.platform,
+      });
+    } catch (error) {
+      await repository.updateBuild(build.id, {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Unknown build error',
+      });
+      await repository.addBuildLog(build.id, 'error', 'Build job failed', error instanceof Error ? error.message : 'unknown');
+
+      logger.error('Build simulation failed', {
+        traceId,
+        buildId: build.id,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }, 5000);
+}
+
+async function buildSourceValidation(sourceAdapter: SourceAdapter, sourceUrl: string): Promise<{ valid: boolean; reason?: string; normalizedUrl: string; metadata?: unknown; releaseCount?: number; }> {
+  const validation = await sourceAdapter.validate(sourceUrl);
+  if (!validation.valid) {
+    return {
+      valid: false,
+      normalizedUrl: validation.normalizedUrl,
+      reason: validation.reason,
+    };
   }
-});
 
-app.get('/api/builds/:buildId', (req: Request, res: Response) => {
-  try {
-    const build = builds.get(req.params.buildId);
+  const metadata = await sourceAdapter.fetchMetadata(validation.normalizedUrl);
+  const releases = await sourceAdapter.listReleases(validation.normalizedUrl);
 
-    if (!build) {
-      return res.status(404).json({ error: 'Build not found' });
+  return {
+    valid: true,
+    normalizedUrl: validation.normalizedUrl,
+    metadata,
+    releaseCount: releases.length,
+  };
+}
+
+export function createServer() {
+  const app = express();
+
+  app.use(cors());
+  app.use(express.json());
+  app.use(requestContextMiddleware);
+
+  app.get('/api/health', (_req, res) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    });
+  });
+
+  app.post(
+    '/api/apps',
+    asyncHandler(async (req, res) => {
+      const name = requireString(req.body.name, 'name');
+      const description = requireString(req.body.description, 'description');
+      const url = requireString(req.body.url, 'url');
+
+      if (!isValidHttpUrl(url)) {
+        throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid http/https address');
+      }
+
+      const newApp: NewAppInput = {
+        name,
+        description,
+        url,
+        icon: typeof req.body.icon === 'string' ? req.body.icon.trim() || undefined : undefined,
+        theme: req.body.theme,
+        features: req.body.features,
+        currentVersion: typeof req.body.currentVersion === 'string' ? req.body.currentVersion : undefined,
+      };
+
+      const created = await repository.createApp(newApp);
+      logger.info('App created', { traceId: req.traceId, appId: created.id });
+      res.status(201).json(created);
+    }),
+  );
+
+  app.get(
+    '/api/apps',
+    asyncHandler(async (_req, res) => {
+      const apps = await repository.listApps();
+      res.json(apps);
+    }),
+  );
+
+  app.get(
+    '/api/apps/:id',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      res.json(appConfig);
+    }),
+  );
+
+  app.put(
+    '/api/apps/:id',
+    asyncHandler(async (req, res) => {
+      const patch: Partial<NewAppInput> = {};
+      if (req.body.name !== undefined) {
+        patch.name = requireString(req.body.name, 'name');
+      }
+      if (req.body.description !== undefined) {
+        patch.description = requireString(req.body.description, 'description');
+      }
+      if (req.body.url !== undefined) {
+        patch.url = requireString(req.body.url, 'url');
+        if (!isValidHttpUrl(patch.url)) {
+          throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid http/https address');
+        }
+      }
+      if (req.body.icon !== undefined) {
+        patch.icon = typeof req.body.icon === 'string' ? req.body.icon.trim() || undefined : undefined;
+      }
+      if (req.body.theme !== undefined) {
+        patch.theme = req.body.theme;
+      }
+      if (req.body.features !== undefined) {
+        patch.features = req.body.features;
+      }
+      if (req.body.currentVersion !== undefined) {
+        patch.currentVersion = typeof req.body.currentVersion === 'string' ? req.body.currentVersion : undefined;
+      }
+
+      const updated = await repository.updateApp(req.params.id, patch);
+      if (!updated) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      res.json(updated);
+    }),
+  );
+
+  app.delete(
+    '/api/apps/:id',
+    asyncHandler(async (req, res) => {
+      const deleted = await repository.deleteApp(req.params.id);
+      if (!deleted) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      res.json({ message: 'App deleted successfully' });
+    }),
+  );
+
+  app.post(
+    '/api/apps/:id/build',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      const platform = normalizePlatform(req.body?.platform);
+      const build = await repository.createBuild(appConfig.id, platform);
+      await simulateBuildCompletion(build, req.traceId);
+
+      logger.info('Build triggered', {
+        traceId: req.traceId,
+        appId: appConfig.id,
+        buildId: build.id,
+        platform,
+      });
+
+      res.status(201).json(build);
+    }),
+  );
+
+  app.get(
+    '/api/builds/:buildId',
+    asyncHandler(async (req, res) => {
+      const build = await repository.getBuildById(req.params.buildId);
+      if (!build) {
+        throw new ApiError(404, 'NOT_FOUND', 'Build not found', { buildId: req.params.buildId });
+      }
+
+      res.json(build);
+    }),
+  );
+
+  app.get(
+    '/api/apps/:id/builds',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      const builds = await repository.getBuildsForApp(appConfig.id);
+      res.json(builds);
+    }),
+  );
+
+  app.get(
+    '/api/builds/:id/logs',
+    asyncHandler(async (req, res) => {
+      const build = await repository.getBuildById(req.params.id);
+      if (!build) {
+        throw new ApiError(404, 'NOT_FOUND', 'Build not found', { buildId: req.params.id });
+      }
+
+      const logs = await repository.getBuildLogs(build.id);
+      res.json(logs);
+    }),
+  );
+
+  app.post(
+    '/api/builds/:id/retry',
+    asyncHandler(async (req, res) => {
+      const build = await repository.getBuildById(req.params.id);
+      if (!build) {
+        throw new ApiError(404, 'NOT_FOUND', 'Build not found', { buildId: req.params.id });
+      }
+
+      const resetBuild = await repository.updateBuild(build.id, {
+        status: 'building',
+        error: undefined,
+        completedAt: undefined,
+      });
+
+      if (!resetBuild) {
+        throw new ApiError(500, 'BACKEND_ERROR', 'Failed to reset build');
+      }
+
+      await repository.addBuildLog(build.id, 'info', 'Build retry requested');
+      await simulateBuildCompletion(resetBuild, req.traceId);
+
+      res.status(202).json(resetBuild);
+    }),
+  );
+
+  app.post(
+    '/api/sources/validate',
+    asyncHandler(async (req, res) => {
+      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl');
+      if (!isValidHttpUrl(sourceUrl)) {
+        throw new ApiError(400, 'VALIDATION_ERROR', 'sourceUrl must be a valid http/https address');
+      }
+
+      const sourceType = normalizeSourceType(req.body.sourceType, sourceUrl);
+      const sourceAdapter = getSourceAdapter(sourceType);
+      const validation = await buildSourceValidation(sourceAdapter, sourceUrl);
+
+      if (!validation.valid) {
+        throw new ApiError(400, 'SOURCE_VALIDATION_FAILED', 'Source validation failed', {
+          sourceType,
+          sourceUrl,
+          reason: validation.reason,
+        });
+      }
+
+      res.json({
+        sourceType,
+        sourceUrl: validation.normalizedUrl,
+        metadata: validation.metadata,
+        releaseCount: validation.releaseCount ?? 0,
+      });
+    }),
+  );
+
+  app.post(
+    '/api/apps/:id/sources',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      const sourceUrl = requireString(req.body.sourceUrl, 'sourceUrl');
+      if (!isValidHttpUrl(sourceUrl)) {
+        throw new ApiError(400, 'VALIDATION_ERROR', 'sourceUrl must be a valid http/https address');
+      }
+
+      const sourceType = normalizeSourceType(req.body.sourceType, sourceUrl);
+      const sourceAdapter = getSourceAdapter(sourceType);
+      const validation = await sourceAdapter.validate(sourceUrl);
+      if (!validation.valid) {
+        throw new ApiError(400, 'SOURCE_VALIDATION_FAILED', 'Source validation failed', {
+          sourceType,
+          sourceUrl,
+          reason: validation.reason,
+        });
+      }
+
+      const metadata = await sourceAdapter.fetchMetadata(validation.normalizedUrl);
+      const source = await repository.addSource(appConfig.id, sourceType, validation.normalizedUrl, {
+        title: metadata.title,
+        owner: metadata.owner,
+        description: metadata.description,
+      });
+
+      res.status(201).json(source);
+    }),
+  );
+
+  app.get(
+    '/api/apps/:id/updates',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      const platform = normalizePlatform(req.query.platform);
+      const sources = await repository.getSourcesForApp(appConfig.id);
+      const result = await checkForUpdates(appConfig.id, sources, platform);
+      res.json(result);
+    }),
+  );
+
+  app.post(
+    '/api/apps/:id/updates/check',
+    asyncHandler(async (req, res) => {
+      const appConfig = await repository.getAppById(req.params.id);
+      if (!appConfig) {
+        throw new ApiError(404, 'NOT_FOUND', 'App not found', { appId: req.params.id });
+      }
+
+      const platform = normalizePlatform(req.body?.platform);
+      const sources = await repository.getSourcesForApp(appConfig.id);
+      const result = await checkForUpdates(appConfig.id, sources, platform);
+
+      res.json(result);
+    }),
+  );
+
+  app.use((req, res) => {
+    res.status(404).json({
+      code: 'NOT_FOUND',
+      message: 'Route not found',
+      traceId: req.traceId,
+    });
+  });
+
+  app.use((error: unknown, req: Request, res: Response, _next: NextFunction) => {
+    if (isApiError(error)) {
+      logger.warn('Handled API error', {
+        traceId: req.traceId,
+        code: error.code,
+        statusCode: error.statusCode,
+        message: error.message,
+      });
+
+      res.status(error.statusCode).json(error.toPayload(req.traceId));
+      return;
     }
 
-    return res.json(build);
-  } catch (error) {
-    console.error('Failed to fetch build', error);
-    return res.status(500).json({ error: 'Failed to fetch build' });
-  }
-});
+    logger.error('Unhandled server error', {
+      traceId: req.traceId,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
 
-app.get('/api/apps/:id/builds', (req: Request, res: Response) => {
-  try {
-    const appId = req.params.id;
+    res.status(500).json({
+      code: 'BACKEND_ERROR',
+      message: 'Internal server error',
+      traceId: req.traceId,
+    });
+  });
 
-    if (!apps.has(appId)) {
-      return res.status(404).json({ error: 'App not found' });
-    }
+  return app;
+}
 
-    const appBuilds = Array.from(builds.values()).filter((build) => build.appId === appId);
-    return res.json(appBuilds);
-  } catch (error) {
-    console.error('Failed to fetch builds', error);
-    return res.status(500).json({ error: 'Failed to fetch builds' });
-  }
-});
+const app = createServer();
 
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Unhandled error', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-app.listen(PORT, () => {
-  console.log(`App Wrapper Store Backend running on http://localhost:${PORT}`);
-  console.log(`Health endpoint: http://localhost:${PORT}/api/health`);
-});
+const isTestRuntime = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true' || process.env.VITEST === '1';
+if (!isTestRuntime) {
+  app.listen(PORT, () => {
+    logger.info('App Wrapper Store Backend started', {
+      port: PORT,
+      healthUrl: `http://localhost:${PORT}/api/health`,
+    });
+  });
+}
 
 export default app;
