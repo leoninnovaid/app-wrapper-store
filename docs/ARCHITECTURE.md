@@ -54,7 +54,7 @@ Key modules:
 ### Build Tooling
 
 - `app-generator`: worker-side helper for build queue actions.
-- `wrapper-template`: React Native/Expo wrapper base with Fastlane scaffolding.
+- `wrapper-template`: React Native/Expo wrapper base with Fastlane scaffolding and built-in diagnostics for wrapper QA.
 
 ## Data Model (Current)
 
@@ -112,3 +112,4 @@ Release dry-run (`.github/workflows/release.yml`) enforces:
 2. Persist artifact metadata and storage URLs for real download lifecycle.
 3. Add end-to-end flow tests across app -> source -> update -> build.
 4. Introduce signed artifact verification and stricter release gates.
+5. Expand wrapper-template diagnostics into automated device/simulator regression runs.

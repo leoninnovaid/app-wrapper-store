@@ -15,7 +15,7 @@ const env = {
   iconUrl: process.env.EXPO_PUBLIC_ICON_URL || "./assets/icon.png",
 };
 
-const config: ExpoConfig = {
+const config: ExpoConfig & { newArchEnabled?: boolean } = {
   name: env.appName,
   slug: env.appSlug,
   version: "1.0.0",

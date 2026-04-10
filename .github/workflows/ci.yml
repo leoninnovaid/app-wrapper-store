@@ -55,3 +55,16 @@ jobs:
           cache-dependency-path: app-generator/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  wrapper-template:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wrapper-template
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run validate

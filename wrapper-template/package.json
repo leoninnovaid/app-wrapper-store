@@ -8,6 +8,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "validate": "node ./scripts/validate-wrapper.mjs",
+    "debug:android": "node ./scripts/validate-wrapper.mjs --platform android && expo start --android",
+    "debug:ios": "node ./scripts/validate-wrapper.mjs --platform ios && expo start --ios",
+    "debug:web": "node ./scripts/validate-wrapper.mjs --platform web && expo start --web",
     "build": "eas build",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios"

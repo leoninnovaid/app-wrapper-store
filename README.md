@@ -109,6 +109,7 @@ See [docs/SAFERAILS.md](docs/SAFERAILS.md) for details.
 - [Future Research Backlog](docs/FUTURE_RESEARCH_BACKLOG.md)
 - [Research Execution Plan](docs/research/RESEARCH_EXECUTION_PLAN.md)
 - [Debug Playbook](docs/DEBUG_PLAYBOOK.md)
+- [Wrapper Testing Framework](docs/WRAPPER_TESTING_FRAMEWORK.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Contributing](docs/CONTRIBUTING.md)
 
