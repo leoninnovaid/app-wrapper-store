@@ -122,3 +122,46 @@ Research outputs committed in this sprint:
 - Daily: triage errors, update daily log, close blockers.
 - Weekly: review milestone gates, regression status, and release-readiness.
 - Per release: run checklist in `docs/RELEASE_CHECKLIST.md`.
+
+## Current roadmap for open tasks
+
+### Stabilization roadmap
+
+- `G5-T3`: expand automated regression coverage from isolated frontend/backend tests into end-to-end flow coverage.
+Trigger for completion: CI demonstrates repeatable coverage for create, source, update, build, and wrapper validation paths.
+Solution path: extend backend tests, add wrapper-template validation enforcement, and introduce cross-surface smoke coverage.
+
+- `G5-T7`: turn research into hardened adapter behavior.
+Trigger for completion: adapter parsing and trust behavior are implemented in code with fixtures and acceptance tests.
+Solution path: implement production parsing for non-GitHub sources and apply the trust model in the backend update pipeline.
+
+- `G5-T9`: operationalize research as engineering execution.
+Trigger for completion: research outputs are reflected in tracker tasks, CI gates, and acceptance tests.
+Solution path: convert research deliverables into explicit code tickets and wire policy validation into automation.
+
+### Delivery roadmap
+
+- `Q1`: real F-Droid/GitLab parsing
+- `Q2`: artifact/log persistence
+- `Q3`: source/update frontend screens
+- `Q4`: signed Android publishing
+- `Q5`: end-to-end test suite
+- `Q6`: CI target-SDK and artifact policy gates
+- `Q7`: packaging strategy prototype matrix
+- `Q8`: trust-signal normalization
+
+For these queued tasks, the execution model is:
+
+1. define repository owner files
+2. define completion trigger
+3. implement narrowest usable version
+4. attach automated verification
+5. update tracker, logs, and release gates
+
+### Wrapper testing roadmap
+
+- `G5-T11`: operationalize the testing/debugging architecture
+- `G5-T12`: persist wrapper diagnostic sessions
+- `G5-T13`: automate Android/iOS wrapper smoke testing
+
+These tasks follow the architecture in [docs/TESTING_DEBUGGING_ARCHITECTURE.md](C:/Users/Leon/Documents/GitHub/app-wrapper-store/docs/TESTING_DEBUGGING_ARCHITECTURE.md) and the workflow in [docs/WRAPPER_TESTING_FRAMEWORK.md](C:/Users/Leon/Documents/GitHub/app-wrapper-store/docs/WRAPPER_TESTING_FRAMEWORK.md).
