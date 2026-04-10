@@ -106,6 +106,17 @@ Release dry-run (`.github/workflows/release.yml`) enforces:
 
 - Fastlane Android dry-run lane invocation on tags/manual dispatch.
 
+## Testing And Debugging Architecture
+
+The dedicated testing/debugging architecture is documented in [docs/TESTING_DEBUGGING_ARCHITECTURE.md](C:/Users/Leon/Documents/GitHub/app-wrapper-store/docs/TESTING_DEBUGGING_ARCHITECTURE.md).
+
+That document maps responsibilities across:
+
+- store/orchestration
+- build-readiness policy
+- wrapper runtime diagnostics
+- platform execution and CI
+
 ## Near-Term Architecture Priorities
 
 1. Replace scaffolded adapters (F-Droid/GitLab/custom) with production parsers.

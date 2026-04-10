@@ -110,6 +110,7 @@ See [docs/SAFERAILS.md](docs/SAFERAILS.md) for details.
 - [Research Execution Plan](docs/research/RESEARCH_EXECUTION_PLAN.md)
 - [Debug Playbook](docs/DEBUG_PLAYBOOK.md)
 - [Wrapper Testing Framework](docs/WRAPPER_TESTING_FRAMEWORK.md)
+- [Testing & Debugging Architecture](docs/TESTING_DEBUGGING_ARCHITECTURE.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
 - [Contributing](docs/CONTRIBUTING.md)
 
