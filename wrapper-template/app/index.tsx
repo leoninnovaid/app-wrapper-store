@@ -1,63 +1,79 @@
-import React, { useState, useRef } from "react";
-import { View, ActivityIndicator, StyleSheet, SafeAreaView } from "react-native";
+import React, { useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
-import Constants from "expo-constants";
 
-/**
- * WebView Wrapper Component
- * Loads a website/app URL in a native WebView container
- * 
- * This component is used by the App Wrapper Store to display
- * websites as native Android/iOS apps.
- */
-
-interface AppConfig {
-  url: string;
-  name: string;
-  theme?: {
-    primaryColor?: string;
-    accentColor?: string;
-  };
-}
-
-// App configuration (injected at build time)
-const APP_CONFIG: AppConfig = {
-  url: process.env.EXPO_PUBLIC_APP_URL || "https://chat.openai.com",
-  name: process.env.EXPO_PUBLIC_APP_NAME || "App",
-  theme: {
-    primaryColor: process.env.EXPO_PUBLIC_PRIMARY_COLOR || "#10a37f",
-    accentColor: process.env.EXPO_PUBLIC_ACCENT_COLOR || "#ffffff",
-  },
-};
+import { DebugPanel } from "../components/DebugPanel";
+import { APP_CONFIG } from "../lib/wrapper-config";
+import {
+  buildInjectedDebugScript,
+  createDiagnosticEvent,
+  parseBridgeMessage,
+  type WrapperDiagnosticEvent,
+} from "../lib/wrapper-diagnostics";
 
 export default function WebViewWrapper() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isDebugPanelVisible, setIsDebugPanelVisible] = useState(false);
+  const [events, setEvents] = useState<WrapperDiagnosticEvent[]>([]);
   const webViewRef = useRef<WebView>(null);
+
+  const pushEvent = (event: WrapperDiagnosticEvent) => {
+    setEvents((current) => [event, ...current].slice(0, APP_CONFIG.debug.eventBufferSize));
+  };
 
   const handleLoadStart = () => {
     setIsLoading(true);
+    pushEvent(createDiagnosticEvent("native", "webview:load-start", "WebView started loading", "info"));
   };
 
   const handleLoadEnd = () => {
     setIsLoading(false);
+    pushEvent(createDiagnosticEvent("native", "webview:load-end", "WebView finished loading", "info"));
   };
 
   const handleError = (syntheticEvent: any) => {
     const { nativeEvent } = syntheticEvent;
     console.warn("WebView error: ", nativeEvent);
+    pushEvent(
+      createDiagnosticEvent("native", "webview:error", nativeEvent.description || "WebView load error", "error", {
+        url: nativeEvent.url,
+        code: nativeEvent.code,
+      }),
+    );
   };
 
-  // Inject JavaScript to improve UX
-  const injectedJavaScript = `
-    (function() {
-      // Remove browser-specific UI elements if needed
-      // Adjust viewport for better mobile experience
-      window.addEventListener('message', (event) => {
-        console.log('Message from WebView:', event.data);
-      });
-    })();
-    true;
-  `;
+  const injectedJavaScript = buildInjectedDebugScript(APP_CONFIG.debug.showConsoleEvents);
+
+  const handleHttpError = (syntheticEvent: any) => {
+    const { nativeEvent } = syntheticEvent;
+    pushEvent(
+      createDiagnosticEvent("native", "webview:http-error", `HTTP ${nativeEvent.statusCode}`, "error", {
+        description: nativeEvent.description,
+        url: nativeEvent.url,
+        statusCode: nativeEvent.statusCode,
+      }),
+    );
+  };
+
+  const handleMessage = (event: any) => {
+    const diagnosticEvent = parseBridgeMessage(event);
+    if (diagnosticEvent) {
+      pushEvent(diagnosticEvent);
+    }
+  };
+
+  const handleReload = () => {
+    pushEvent(createDiagnosticEvent("native", "wrapper:reload", "Manual WebView reload requested", "warn"));
+    setIsLoading(true);
+    webViewRef.current?.reload();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -78,6 +94,8 @@ export default function WebViewWrapper() {
           onLoadStart={handleLoadStart}
           onLoadEnd={handleLoadEnd}
           onError={handleError}
+          onHttpError={handleHttpError}
+          onMessage={handleMessage}
           injectedJavaScript={injectedJavaScript}
           javaScriptEnabled={true}
           domStorageEnabled={true}
@@ -92,6 +110,25 @@ export default function WebViewWrapper() {
           allowFileAccessFromFileURLs={false}
           allowUniversalAccessFromFileURLs={false}
           mixedContentMode="always"
+        />
+
+        {APP_CONFIG.debug.enabled ? (
+          <Pressable
+            onPress={() => setIsDebugPanelVisible(true)}
+            style={styles.debugButton}
+          >
+            <Text style={styles.debugButtonText}>Debug</Text>
+          </Pressable>
+        ) : null}
+
+        <DebugPanel
+          visible={isDebugPanelVisible}
+          events={events}
+          appName={APP_CONFIG.name}
+          appUrl={APP_CONFIG.url}
+          onClose={() => setIsDebugPanelVisible(false)}
+          onClear={() => setEvents([])}
+          onReload={handleReload}
         />
       </View>
     </SafeAreaView>
@@ -112,5 +149,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     zIndex: 10,
+  },
+  debugButton: {
+    position: "absolute",
+    right: 16,
+    bottom: 24,
+    backgroundColor: "#0f766e",
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 20,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 4,
+  },
+  debugButtonText: {
+    color: "#fff",
+    fontWeight: "700",
   },
 });

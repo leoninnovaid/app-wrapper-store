@@ -73,6 +73,13 @@ cd app-generator
 npm run build
 ```
 
+### Wrapper Template
+
+```bash
+cd wrapper-template
+npm run validate
+```
+
 ## Branch and Commit Format
 
 - Branch naming recommendation: `feature/...`, `fix/...`, `chore/...`

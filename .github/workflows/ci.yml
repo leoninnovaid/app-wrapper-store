@@ -55,3 +55,22 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run policy:check
+
+  wrapper-template:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wrapper-template
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run validate
+        env:
+          EXPO_PUBLIC_APP_URL: https://example.com
+          EXPO_PUBLIC_APP_NAME: Wrapper QA
+          EXPO_PUBLIC_APP_SLUG: wrapper-qa
+          EXPO_PUBLIC_PRIMARY_COLOR: "#0A84FF"
+          EXPO_PUBLIC_ACCENT_COLOR: "#34C759"

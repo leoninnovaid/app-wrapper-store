@@ -66,7 +66,7 @@ Reference: `docs/SOURCE_MAP.md`.
 ### Build Tooling
 
 - `app-generator`: worker-side helper for build queue actions.
-- `wrapper-template`: React Native/Expo wrapper base with Fastlane scaffolding.
+- `wrapper-template`: React Native/Expo wrapper base with Fastlane scaffolding and built-in diagnostics for wrapper QA.
 
 ## Data Model (Current)
 
@@ -118,9 +118,21 @@ Release dry-run (`.github/workflows/release.yml`) enforces:
 
 - Fastlane Android dry-run lane invocation on tags/manual dispatch.
 
+## Testing And Debugging Architecture
+
+The dedicated testing/debugging architecture is documented in `docs/TESTING_DEBUGGING_ARCHITECTURE.md`.
+
+That document maps responsibilities across:
+
+- store/orchestration
+- build-readiness policy
+- wrapper runtime diagnostics
+- platform execution and CI
+
 ## Near-Term Architecture Priorities
 
 1. Add API integration coverage for normalized trust fields (`integrity`, `trustSignals`).
 2. Persist artifact metadata and storage URLs for real download lifecycle.
 3. Add end-to-end flow tests across app -> source -> update -> build.
 4. Introduce signed artifact verification and stricter release gates.
+5. Expand wrapper-template diagnostics into automated device/simulator regression runs.
