@@ -31,6 +31,10 @@ function inferSourceType(sourceUrl: string): SourceType {
     return 'github';
   }
 
+  if (normalized.includes('gitlab.com')) {
+    return 'gitlab';
+  }
+
   if (normalized.includes('f-droid') || normalized.includes('fdroid')) {
     return 'fdroid';
   }
@@ -480,7 +484,7 @@ export function createServer() {
 
       const platform = normalizePlatform(req.query.platform);
       const sources = await repository.getSourcesForApp(appConfig.id);
-      const result = await checkForUpdates(appConfig.id, sources, platform);
+      const result = await checkForUpdates(appConfig, sources, platform);
       res.json(result);
     }),
   );
@@ -495,7 +499,7 @@ export function createServer() {
 
       const platform = normalizePlatform(req.body?.platform);
       const sources = await repository.getSourcesForApp(appConfig.id);
-      const result = await checkForUpdates(appConfig.id, sources, platform);
+      const result = await checkForUpdates(appConfig, sources, platform);
 
       res.json(result);
     }),

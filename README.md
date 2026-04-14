@@ -110,6 +110,7 @@ See [docs/SAFERAILS.md](docs/SAFERAILS.md) for details.
 - [Research Execution Plan](docs/research/RESEARCH_EXECUTION_PLAN.md)
 - [Debug Playbook](docs/DEBUG_PLAYBOOK.md)
 - [Release Checklist](docs/RELEASE_CHECKLIST.md)
+- [Test Scenarios and User Journeys](docs/TEST_SCENARIOS_AND_USER_JOURNEYS.md)
 - [Contributing](docs/CONTRIBUTING.md)
 
 ## License

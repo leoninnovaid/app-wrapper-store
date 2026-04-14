@@ -24,23 +24,24 @@
 | G5-T4 | G5 | Repo alignment pass (README/architecture/contributing refresh) | Done | High | Core | None | Docs match actual modules and commands |
 | G5-T5 | G5 | Build concurrency and input guardrails | Done | High | Core | G1-T3 | `CONFLICT` on overlapping builds + field-size validation |
 | G5-T6 | G5 | Publish saferail and research backlog docs | Done | Medium | Core | G5-T4 | `docs/SAFERAILS.md` + `docs/FUTURE_RESEARCH_BACKLOG.md` committed |
-| G5-T7 | G5 | Adapter hardening and verification research execution | In Progress | High | Core | G5-T6 | R1/R2 research converted into executable implementation tasks |
+| G5-T7 | G5 | Adapter hardening and verification research execution | In Progress | High | Core | G5-T6 | GitHub/GitLab/F-Droid/custom trust extraction baseline landed; integration hardening remains |
 | G5-T8 | G5 | Publish concrete R1-R3 research artifacts | Done | High | Core | G5-T7 | `docs/research/*` includes scorecard, trust model, policy plan |
-| G5-T9 | G5 | Convert research outputs into code tickets and CI tasks | In Progress | High | Core | G5-T8 | Tracker includes implementation tasks with acceptance tests |
+| G5-T9 | G5 | Convert research outputs into code tickets and CI tasks | In Progress | High | Core | G5-T8 | Tracker includes adapter trust tests; API payload and CI gates remain |
 | G5-T10 | G5 | Add initial Play policy checker prototype | Done | High | Core | G5-T8 | Versioned policy file + runnable checker + CI command |
 
 ## Next queued tasks
 
 | Queue | Task | Why it matters |
 |---|---|---|
-| Q1 | Implement real F-Droid/GitLab release parsing | Required for multi-source strategy |
+| Q1 | Add API integration tests for trust fields (`integrity`, `trustSignals`) | Required to lock update payload contract |
 | Q2 | Persist build artifacts and logs for download lifecycle | Required for release operations |
 | Q3 | Add source/update UI screens in frontend | Required for full user flow of G2/G3 |
 | Q4 | Integrate signed Android artifact publishing | Required for production release |
 | Q5 | Add e2e test suite for app -> source -> update -> build | Required for RC confidence |
 | Q6 | Add CI policy check for target SDK and artifact type consistency | Prevent release-policy drift |
 | Q7 | Prototype-run matrix for WebView/TWA/Capacitor/Cordova | Needed to finalize default packaging policy |
-| Q8 | Adapter trust-signal extraction and normalization implementation | Needed for deterministic verification states |
+| Q8 | Harden adapter trust parsing for edge cases (missing timestamps, malformed checksums) | Needed for deterministic behavior on messy real-world feeds |
+| Q9 | Automate scenarios S7/S8 from test journey matrix | Required to close remaining high-risk coverage gaps |
 
 ## Definition of done (global)
 

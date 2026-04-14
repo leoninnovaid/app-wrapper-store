@@ -6,6 +6,19 @@ export type PackagingStrategy = 'webview' | 'twa' | 'capacitor' | 'cordova';
 export type DistributionChannel = 'local-sideload' | 'play-store';
 export type AndroidArtifactType = 'apk' | 'aab';
 
+export interface ArtifactIntegrity {
+  algorithm?: string;
+  value: string;
+  source: string;
+}
+
+export interface ArtifactTrustSignals {
+  installable: boolean;
+  checksumPresent: boolean;
+  sourceMetadataCoherent: boolean;
+  policyCompatible: boolean;
+}
+
 export interface ApkReadinessChecklist {
   httpsEnabled?: boolean;
   validWebManifest?: boolean;
@@ -84,6 +97,8 @@ export interface ReleaseArtifact {
   url: string;
   size: number;
   checksum?: string;
+  integrity?: ArtifactIntegrity;
+  trustSignals?: ArtifactTrustSignals;
   verificationStatus: VerificationStatus;
   reason?: string;
 }

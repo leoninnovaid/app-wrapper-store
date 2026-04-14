@@ -172,3 +172,149 @@
 1. Start prototype runs for WebView/TWA/Capacitor/Cordova under shared acceptance checks.
 2. Extend policy checker with failing fixtures and add assertion tests.
 3. Convert R2 trust matrix directly into backend adapter code tasks.
+
+## 2026-04-14 - R2 trust normalization slice
+
+### Work completed
+
+- Added `backend/src/services/artifact-verification.ts` to calculate shared trust signals and deterministic verification states.
+- Extended the source adapter contract so verification now receives release metadata plus packaging/distribution context.
+- Updated the GitHub adapter to normalize digest metadata into `integrity`, derive trust signals, and block APK-only artifacts for Play-targeted apps.
+- Added `backend/src/test/update-service.test.ts` for verified, unverified, and policy-blocked update selection scenarios.
+- Updated `TASK_TRACKER.md` so Q8 now reflects the remaining non-GitHub adapter work.
+
+### Failures observed
+
+- None in this pass.
+
+### Root cause
+
+- Not applicable.
+
+### Fixes applied
+
+- Installed backend dependencies and executed focused backend tests + build in this worktree.
+
+### Verification evidence
+
+- Manual diff review confirms update checks now pass app packaging context into adapter verification.
+- New unit tests encode the R2 matrix for verified checksum, missing checksum, and Play-policy incompatibility.
+- `npm test -- src/test/update-service.test.ts src/test/gitlab-source-adapter.test.ts` passed (7 tests).
+- `npm run build` passed for backend.
+
+### Prevention actions
+
+- Centralized trust-state calculation in one service to avoid adapter-specific drift in verification rules.
+
+### Next actions
+
+1. Implement real trust-signal extraction and release parsing for F-Droid/custom adapters.
+2. Add API integration coverage asserting the update payload exposes the new trust fields.
+3. Decide whether custom adapter should consume signed manifest files or direct artifact endpoints first.
+
+## 2026-04-14 - GitLab adapter execution slice
+
+### Work completed
+
+- Added `backend/src/adapters/gitlab-source-adapter.ts` with project validation, metadata fetch, release parsing, artifact normalization, and trust verification via shared evaluator.
+- Wired GitLab into `backend/src/services/source-registry.ts`, replacing the scaffold placeholder for `gitlab`.
+- Updated `backend/src/adapters/fdroid-source-adapter.ts` to use shared verification logic instead of always returning blocked.
+- Added `backend/src/test/gitlab-source-adapter.test.ts` covering URL normalization, release artifact mapping, and Play-policy blocking.
+
+### Failures observed
+
+- None.
+
+### Root cause
+
+- Not applicable.
+
+### Fixes applied
+
+- Implemented first non-GitHub production adapter path and connected it to shared trust-state policy.
+
+### Verification evidence
+
+- `npm test -- src/test/update-service.test.ts src/test/gitlab-source-adapter.test.ts` succeeded.
+- `npm run build` succeeded in `backend`.
+
+### Prevention actions
+
+- Added adapter-focused tests to reduce regression risk when expanding F-Droid/custom support.
+
+### Next actions
+
+1. Implement F-Droid release ingestion + trust-signal extraction.
+2. Define and implement custom-source release contract (manifest vs direct artifacts).
+3. Add API integration tests that assert `integrity` and `trustSignals` fields in update payloads.
+
+## 2026-04-14 - F-Droid and custom adapter execution slice
+
+### Work completed
+
+- Replaced `backend/src/adapters/fdroid-source-adapter.ts` scaffold behavior with real index parsing from `index-v1.json` and normalized APK release mapping.
+- Added `backend/src/adapters/custom-source-adapter.ts` with manifest-driven release ingestion (`releases[].artifacts[]`) and trust-signal-compatible artifact normalization.
+- Wired custom adapter into `backend/src/services/source-registry.ts` and improved source type inference in `backend/src/index.ts` to auto-detect GitLab URLs.
+- Added `backend/src/test/fdroid-source-adapter.test.ts` and `backend/src/test/custom-source-adapter.test.ts` to verify parsing and normalization behavior.
+
+### Failures observed
+
+- None.
+
+### Root cause
+
+- Not applicable.
+
+### Fixes applied
+
+- Implemented baseline non-GitHub/non-GitLab ingestion paths to remove remaining scaffold-only trust flow for F-Droid/custom.
+
+### Verification evidence
+
+- `npm test -- src/test/update-service.test.ts src/test/gitlab-source-adapter.test.ts src/test/fdroid-source-adapter.test.ts src/test/custom-source-adapter.test.ts` passed (11 tests).
+- `npm run build` passed in `backend`.
+
+### Prevention actions
+
+- Added dedicated adapter tests so future parser hardening can be done without regressing trust-state mapping behavior.
+
+### Next actions
+
+1. Add API integration tests asserting `integrity` and `trustSignals` are present on update payload artifacts.
+2. Harden adapter parsing for malformed timestamps/checksums and mixed artifact sets.
+3. Add CI task coverage for the expanded adapter trust test set.
+
+## 2026-04-14 - Test scenarios and user journeys baseline
+
+### Work completed
+
+- Added `docs/TEST_SCENARIOS_AND_USER_JOURNEYS.md` with 8 core journeys (app create, source onboarding, update trust, build guardrails, frontend error UX, and full lifecycle).
+- Added scenario matrix mapping each scenario to automation status (`Yes`/`No next`) and test level (unit/integration/e2e).
+- Linked the new document from `README.md` in Key Documentation.
+
+### Failures observed
+
+- None.
+
+### Root cause
+
+- Not applicable.
+
+### Fixes applied
+
+- Converted implicit QA expectations into explicit reusable journeys and acceptance outcomes.
+
+### Verification evidence
+
+- Backend validation completed: `npm test` and `npm run build` passed in `backend`.
+- Frontend validation completed: `npm run lint`, `npm test`, and `npm run build` passed in `frontend`.
+
+### Prevention actions
+
+- Scenario coverage map now highlights unautomated but critical flows (`S7`, `S8`) to prevent test blind spots.
+
+### Next actions
+
+1. Implement API integration tests for update payload trust fields.
+2. Introduce browser E2E for full lifecycle journey (J8).
+3. Add malformed source fixtures for parser hardening.

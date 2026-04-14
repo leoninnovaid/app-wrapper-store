@@ -1,6 +1,8 @@
-﻿import { FdroidSourceAdapter } from '../adapters/fdroid-source-adapter';
+import { CustomSourceAdapter } from '../adapters/custom-source-adapter';
+import { FdroidSourceAdapter } from '../adapters/fdroid-source-adapter';
+import { GitLabSourceAdapter } from '../adapters/gitlab-source-adapter';
 import { GitHubSourceAdapter } from '../adapters/github-source-adapter';
-import { SourceAdapter } from '../adapters/source-adapter';
+import { ArtifactVerificationContext, SourceAdapter } from '../adapters/source-adapter';
 import { ApiError } from '../errors/api-error';
 import { SourceType } from '../types/domain';
 
@@ -36,7 +38,7 @@ class PlaceholderSourceAdapter implements SourceAdapter {
     return null;
   }
 
-  async verifyArtifact() {
+  async verifyArtifact(_release: unknown, _artifact: unknown, _context: ArtifactVerificationContext) {
     return {
       status: 'blocked' as const,
       reason: `${this.sourceType} verification flow is not implemented yet`,
@@ -47,8 +49,8 @@ class PlaceholderSourceAdapter implements SourceAdapter {
 const adapters: Record<SourceType, SourceAdapter> = {
   github: new GitHubSourceAdapter(),
   fdroid: new FdroidSourceAdapter(),
-  gitlab: new PlaceholderSourceAdapter('gitlab'),
-  custom: new PlaceholderSourceAdapter('custom'),
+  gitlab: new GitLabSourceAdapter(),
+  custom: new CustomSourceAdapter(),
 };
 
 export function getSourceAdapter(sourceType: SourceType): SourceAdapter {

@@ -1,4 +1,4 @@
-﻿import { AppSource, Platform, ReleaseArtifact, SourceRelease, UpdateCheckResult } from '../types/domain';
+import { AppConfig, AppSource, Platform, ReleaseArtifact, SourceRelease, UpdateCheckResult } from '../types/domain';
 import { getSourceAdapter } from './source-registry';
 
 interface Candidate {
@@ -12,8 +12,15 @@ function selectNewestCandidate(candidates: Candidate[]): Candidate {
   return sorted[0];
 }
 
-export async function checkForUpdates(appId: string, sources: AppSource[], platform: Platform): Promise<UpdateCheckResult> {
+export async function checkForUpdates(app: AppConfig, sources: AppSource[], platform: Platform): Promise<UpdateCheckResult> {
   const checkedAt = new Date().toISOString();
+  const appId = app.id;
+  const packaging = app.features?.packaging;
+  const verificationContext = {
+    platform,
+    distribution: packaging?.distribution,
+    preferredArtifact: packaging?.preferredArtifact,
+  };
 
   if (sources.length === 0) {
     return {
@@ -38,18 +45,38 @@ export async function checkForUpdates(appId: string, sources: AppSource[], platf
 
     let selectedRelease: SourceRelease | null = null;
     let artifact: ReleaseArtifact | null = null;
+    const sourceBlockedReasons: string[] = [];
 
     for (const release of releases) {
-      const candidate = adapter.pickInstallableArtifact([release], platform);
-      if (candidate) {
+      let releaseArtifacts = [...release.artifacts];
+
+      while (releaseArtifacts.length > 0) {
+        const candidate = adapter.pickInstallableArtifact([{ ...release, artifacts: releaseArtifacts }], platform);
+        if (!candidate) {
+          break;
+        }
+
+        const verification = await adapter.verifyArtifact(release, candidate, verificationContext);
+        if (verification.status === 'blocked') {
+          sourceBlockedReasons.push(`${source.sourceType}: ${verification.reason ?? 'artifact verification failed'}`);
+          releaseArtifacts = releaseArtifacts.filter((artifactOption) => artifactOption !== candidate);
+          continue;
+        }
+
         selectedRelease = release;
         artifact = candidate;
+        break;
+      }
+
+      if (artifact) {
         break;
       }
     }
 
     if (!artifact) {
-      blockedReasons.push(`${source.sourceType}: no ${platform} installable artifact found`);
+      blockedReasons.push(
+        ...(sourceBlockedReasons.length > 0 ? sourceBlockedReasons : [`${source.sourceType}: no ${platform} installable artifact found`]),
+      );
       continue;
     }
 

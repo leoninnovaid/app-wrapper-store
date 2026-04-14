@@ -1,63 +1,69 @@
 import axios, { AxiosInstance } from 'axios';
 import { ApiError } from '../errors/api-error';
+import { evaluateArtifactVerification } from '../services/artifact-verification';
 import { Platform, ReleaseArtifact, SourceMetadata, SourceRelease } from '../types/domain';
 import { ArtifactVerificationContext, SourceAdapter, SourceValidationResult, VerifyArtifactResult } from './source-adapter';
-import { evaluateArtifactVerification } from '../services/artifact-verification';
 
-interface GitHubRepoRef {
-  owner: string;
-  repo: string;
+interface GitLabProjectRef {
+  apiBaseUrl: string;
+  projectPath: string;
+  encodedProjectPath: string;
   normalizedUrl: string;
 }
 
-interface GitHubAsset {
+interface GitLabReleaseAssetLink {
   name: string;
-  browser_download_url: string;
-  size: number;
-  digest?: string;
+  url: string;
+  direct_asset_url?: string;
 }
 
-interface GitHubRelease {
-  tag_name: string;
-  name: string;
-  body: string;
-  published_at: string;
-  assets: GitHubAsset[];
+interface GitLabRelease {
+  tag_name?: string;
+  name?: string;
+  description?: string;
+  released_at?: string;
+  assets?: {
+    links?: GitLabReleaseAssetLink[];
+  };
 }
 
-export class GitHubSourceAdapter implements SourceAdapter {
-  readonly sourceType = 'github' as const;
+interface GitLabProject {
+  path_with_namespace?: string;
+  description?: string;
+  web_url?: string;
+}
+
+export class GitLabSourceAdapter implements SourceAdapter {
+  readonly sourceType = 'gitlab' as const;
   private readonly client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
-      baseURL: 'https://api.github.com',
       headers: {
-        Accept: 'application/vnd.github+json',
         'User-Agent': 'AppWrapperStore/1.0',
       },
       timeout: 15000,
     });
 
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.GITLAB_TOKEN;
     if (token) {
-      this.client.defaults.headers.common.Authorization = `Bearer ${token}`;
+      this.client.defaults.headers.common['PRIVATE-TOKEN'] = token;
     }
   }
 
   async validate(sourceUrl: string): Promise<SourceValidationResult> {
-    const ref = this.parseRepositoryReference(sourceUrl);
+    const ref = this.parseProjectReference(sourceUrl);
     if (!ref) {
       return {
         valid: false,
         sourceType: this.sourceType,
         normalizedUrl: sourceUrl,
-        reason: 'URL must point to a GitHub repository',
+        reason: 'URL must point to a GitLab project',
       };
     }
 
     try {
-      await this.client.get(`/repos/${ref.owner}/${ref.repo}`);
+      await this.client.get<GitLabProject>(`${ref.apiBaseUrl}/projects/${ref.encodedProjectPath}`);
       return {
         valid: true,
         sourceType: this.sourceType,
@@ -68,27 +74,26 @@ export class GitHubSourceAdapter implements SourceAdapter {
         valid: false,
         sourceType: this.sourceType,
         normalizedUrl: ref.normalizedUrl,
-        reason: 'Repository could not be validated via GitHub API',
+        reason: 'Project could not be validated via GitLab API',
       };
     }
   }
 
   async fetchMetadata(sourceUrl: string): Promise<SourceMetadata> {
-    const ref = this.parseRepositoryReference(sourceUrl);
+    const ref = this.parseProjectReference(sourceUrl);
     if (!ref) {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid GitHub repository URL', { sourceUrl });
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid GitLab project URL', { sourceUrl });
     }
 
     try {
-      const response = await this.client.get(`/repos/${ref.owner}/${ref.repo}`);
+      const response = await this.client.get<GitLabProject>(`${ref.apiBaseUrl}/projects/${ref.encodedProjectPath}`);
       return {
-        title: response.data.full_name,
-        owner: response.data.owner?.login,
+        title: response.data.path_with_namespace ?? ref.projectPath,
         description: response.data.description ?? '',
-        homepage: response.data.html_url,
+        homepage: response.data.web_url ?? ref.normalizedUrl,
       };
     } catch (error) {
-      throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch metadata from GitHub', {
+      throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch metadata from GitLab', {
         sourceUrl: ref.normalizedUrl,
         error: error instanceof Error ? error.message : 'unknown',
       });
@@ -96,24 +101,33 @@ export class GitHubSourceAdapter implements SourceAdapter {
   }
 
   async listReleases(sourceUrl: string): Promise<SourceRelease[]> {
-    const ref = this.parseRepositoryReference(sourceUrl);
+    const ref = this.parseProjectReference(sourceUrl);
     if (!ref) {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid GitHub repository URL', { sourceUrl });
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid GitLab project URL', { sourceUrl });
     }
 
     try {
-      const response = await this.client.get<GitHubRelease[]>(`/repos/${ref.owner}/${ref.repo}/releases?per_page=20`);
-      const releases = response.data.map((release) => ({
-        version: release.tag_name || release.name || 'unknown',
-        tag: release.tag_name || release.name || 'unknown',
-        publishedAt: release.published_at || new Date(0).toISOString(),
-        notes: release.body,
-        artifacts: release.assets.map((asset) => this.mapArtifact(asset)),
-      }));
+      const response = await this.client.get<GitLabRelease[]>(
+        `${ref.apiBaseUrl}/projects/${ref.encodedProjectPath}/releases?per_page=20`,
+      );
+
+      const releases = response.data.map((release) => {
+        const tag = release.tag_name || release.name || 'unknown';
+        const version = release.tag_name || release.name || 'unknown';
+        const links = release.assets?.links ?? [];
+
+        return {
+          version,
+          tag,
+          publishedAt: release.released_at || new Date(0).toISOString(),
+          notes: release.description,
+          artifacts: links.map((link) => this.mapArtifact(link)),
+        };
+      });
 
       return releases.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
     } catch (error) {
-      throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch releases from GitHub', {
+      throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch releases from GitLab', {
         sourceUrl: ref.normalizedUrl,
         error: error instanceof Error ? error.message : 'unknown',
       });
@@ -140,7 +154,7 @@ export class GitHubSourceAdapter implements SourceAdapter {
     return evaluateArtifactVerification(release, artifact, context);
   }
 
-  private parseRepositoryReference(sourceUrl: string): GitHubRepoRef | null {
+  private parseProjectReference(sourceUrl: string): GitLabProjectRef | null {
     let normalized = sourceUrl.trim();
     if (!normalized) {
       return null;
@@ -152,28 +166,27 @@ export class GitHubSourceAdapter implements SourceAdapter {
 
     try {
       const parsed = new URL(normalized);
-      if (parsed.hostname !== 'github.com') {
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      if (parts.length < 2) {
         return null;
       }
 
-      const [owner, repo] = parsed.pathname.split('/').filter(Boolean);
-      if (!owner || !repo) {
-        return null;
-      }
-
-      const cleanedRepo = repo.replace(/\.git$/i, '');
+      const projectPath = parts.join('/').replace(/\.git$/i, '');
+      const normalizedUrl = `${parsed.protocol}//${parsed.host}/${projectPath}`;
       return {
-        owner,
-        repo: cleanedRepo,
-        normalizedUrl: `https://github.com/${owner}/${cleanedRepo}`,
+        apiBaseUrl: `${parsed.protocol}//${parsed.host}/api/v4`,
+        projectPath,
+        encodedProjectPath: encodeURIComponent(projectPath),
+        normalizedUrl,
       };
     } catch {
       return null;
     }
   }
 
-  private mapArtifact(asset: GitHubAsset): ReleaseArtifact {
-    const lower = asset.name.toLowerCase();
+  private mapArtifact(link: GitLabReleaseAssetLink): ReleaseArtifact {
+    const resolvedUrl = link.direct_asset_url ? link.direct_asset_url : link.url;
+    const lower = (link.name || resolvedUrl).toLowerCase();
 
     let type: ReleaseArtifact['type'] = 'other';
     let platform: ReleaseArtifact['platform'] = 'any';
@@ -189,30 +202,14 @@ export class GitHubSourceAdapter implements SourceAdapter {
       platform = 'ios';
     }
 
-    const digest = asset.digest?.trim();
-    const integrity = digest ? this.parseIntegrity(digest) : undefined;
-
     return {
-      name: asset.name,
+      name: link.name || resolvedUrl,
       type,
       platform,
-      url: asset.browser_download_url,
-      size: asset.size,
-      checksum: integrity?.value ?? (digest || undefined),
-      integrity,
+      url: resolvedUrl,
+      size: 0,
       verificationStatus: 'unverified',
-      reason: digest ? undefined : 'No checksum provided by source',
-    };
-  }
-
-  private parseIntegrity(digest: string): ReleaseArtifact['integrity'] {
-    const [algorithm, ...valueParts] = digest.split(':');
-    const value = valueParts.join(':').trim();
-
-    return {
-      algorithm: value ? algorithm.trim() : undefined,
-      value: value || digest.trim(),
-      source: 'github-release-asset-digest',
+      reason: 'No checksum provided by source',
     };
   }
 
