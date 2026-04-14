@@ -101,3 +101,26 @@ Each entry should stay concise and include:
 
 1. Harden adapter parsing for malformed timestamps/checksums and mixed artifacts (Q8).
 2. Add CI-facing tests for wrapper-template validation environment expectations.
+
+---
+
+## 2026-04-14 (backend CI stabilization)
+
+**Focus:** Eliminate intermittent backend CI sqlite readonly failures
+
+**Outcomes**
+
+- Root-cause class addressed: test suite no longer uses a shared fixed sqlite file path.
+- Updated `backend/src/test/setup.ts` to allocate a unique per-run sqlite DB in OS temp directory.
+- Added explicit pre/post cleanup for sqlite sidecar files (`.sqlite`, `-wal`, `-shm`) to avoid stale lock-state artifacts.
+- Kept backend Vitest file-parallelism guard in place and aligned tracker sections to avoid duplicated queued/done task state.
+
+**Verification**
+
+- Backend suite passed repeatedly with fresh DB paths: 5 consecutive `npm test` runs in `backend`.
+- No `SQLITE_READONLY` or related write/lock failures observed locally.
+
+**Next actions**
+
+1. Push stabilization patch to `main` and watch `CI / backend` for one full green cycle.
+2. Continue with Q2 (artifact/log persistence) after CI confirms stability.
