@@ -76,3 +76,28 @@ Each entry should stay concise and include:
 1. Add API integration assertions for update payload trust fields (`integrity`, `trustSignals`).
 2. Harden parsing against malformed timestamps/checksums and mixed artifact sets.
 3. Add E2E lifecycle coverage for scenario matrix gaps (`S7`, `S8`).
+
+---
+
+## 2026-04-14 (Q1 completion)
+
+**Focus:** Lock update payload trust-field API contract
+
+**Outcomes**
+
+- Added backend integration coverage in `backend/src/test/api.integration.test.ts` for update payload trust fields.
+- New API test now asserts:
+  - `artifact.integrity`
+  - `artifact.trustSignals`
+  - expected `verificationStatus` on update response.
+- Marked Q1 as completed in `TASK_TRACKER.md`.
+
+**Verification**
+
+- Backend build passed: `npm run build`.
+- Backend tests passed: `npm test` (20 tests total).
+
+**Next actions**
+
+1. Harden adapter parsing for malformed timestamps/checksums and mixed artifacts (Q8).
+2. Add CI-facing tests for wrapper-template validation environment expectations.

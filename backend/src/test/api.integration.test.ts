@@ -1,7 +1,13 @@
-﻿import request from 'supertest';
+import { afterEach, vi } from 'vitest';
+import request from 'supertest';
+import { getSourceAdapter } from '../services/source-registry';
 import app from '../index';
 
 describe('Backend API contracts', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns standardized validation error payload', async () => {
     const response = await request(app).post('/api/apps').send({ name: 'Only Name' });
 
@@ -48,9 +54,7 @@ describe('Backend API contracts', () => {
   });
 
   it('validates source URL format and returns standardized error payload', async () => {
-    const response = await request(app)
-      .post('/api/sources/validate')
-      .send({ sourceType: 'github', sourceUrl: 'not-a-url' });
+    const response = await request(app).post('/api/sources/validate').send({ sourceType: 'github', sourceUrl: 'not-a-url' });
 
     expect(response.status).toBe(400);
     expect(response.body).toMatchObject({
@@ -163,5 +167,81 @@ describe('Backend API contracts', () => {
       code: 'VALIDATION_ERROR',
     });
     expect(String(response.body.message)).toContain('at most 120');
+  });
+
+  it('returns integrity and trustSignals in update payload artifact', async () => {
+    const customAdapter = getSourceAdapter('custom');
+
+    vi.spyOn(customAdapter, 'validate').mockResolvedValue({
+      valid: true,
+      sourceType: 'custom',
+      normalizedUrl: 'https://updates.example.com/manifest.json',
+    });
+
+    vi.spyOn(customAdapter, 'fetchMetadata').mockResolvedValue({
+      title: 'Custom Updates',
+      description: 'Integration-test custom source',
+      homepage: 'https://updates.example.com',
+    });
+
+    vi.spyOn(customAdapter, 'listReleases').mockResolvedValue([
+      {
+        version: 'v1.2.3',
+        tag: 'v1.2.3',
+        publishedAt: '2026-04-14T00:00:00.000Z',
+        artifacts: [
+          {
+            name: 'app-v1.2.3.apk',
+            type: 'apk',
+            platform: 'android',
+            url: 'https://updates.example.com/app-v1.2.3.apk',
+            size: 1200,
+            checksum: 'abc123',
+            integrity: {
+              algorithm: 'sha256',
+              value: 'abc123',
+              source: 'custom-manifest',
+            },
+            verificationStatus: 'unverified',
+          },
+        ],
+      },
+    ]);
+
+    const createResponse = await request(app).post('/api/apps').send({
+      name: 'Trust Field App',
+      description: 'Update payload trust fields integration test',
+      url: 'https://example.com',
+    });
+    const appId = createResponse.body.id as string;
+
+    const attachResponse = await request(app).post(`/api/apps/${appId}/sources`).send({
+      sourceType: 'custom',
+      sourceUrl: 'https://updates.example.com/manifest.json',
+    });
+    expect(attachResponse.status).toBe(201);
+
+    const updatesResponse = await request(app).get(`/api/apps/${appId}/updates?platform=android`);
+
+    expect(updatesResponse.status).toBe(200);
+    expect(updatesResponse.body).toMatchObject({
+      appId,
+      status: 'update_available',
+      artifact: {
+        verificationStatus: 'verified',
+        integrity: {
+          algorithm: 'sha256',
+          value: 'abc123',
+          source: 'custom-manifest',
+        },
+      },
+    });
+
+    expect(updatesResponse.body.artifact?.trustSignals).toMatchObject({
+      installable: true,
+      checksumPresent: true,
+      sourceMetadataCoherent: true,
+      policyCompatible: true,
+    });
   });
 });

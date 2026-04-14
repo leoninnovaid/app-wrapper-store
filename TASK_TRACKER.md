@@ -33,7 +33,7 @@
 
 | Queue | Task | Why it matters |
 |---|---|---|
-| Q1 | Add API integration tests for trust fields (`integrity`, `trustSignals`) | Required to lock update payload contract |
+| Q1 | Add API integration tests for trust fields (`integrity`, `trustSignals`) | Done - backend integration contract now asserts both fields |
 | Q2 | Persist build artifacts and logs for download lifecycle | Required for release operations |
 | Q3 | Add source/update UI screens in frontend | Required for full user flow of G2/G3 |
 | Q4 | Integrate signed Android artifact publishing | Required for production release |
