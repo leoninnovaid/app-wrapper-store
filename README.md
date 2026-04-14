@@ -104,6 +104,7 @@ See [docs/SAFERAILS.md](docs/SAFERAILS.md) for details.
 ## Key Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
+- [Source Map](docs/SOURCE_MAP.md)
 - [Android Packaging Blueprint](docs/ANDROID_PACKAGING_BLUEPRINT.md)
 - [Saferails](docs/SAFERAILS.md)
 - [Future Research Backlog](docs/FUTURE_RESEARCH_BACKLOG.md)

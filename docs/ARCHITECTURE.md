@@ -49,7 +49,19 @@ Key modules:
 - `src/repositories/sqlite-store-repository.ts`: persistence adapter
 - `src/services/build-readiness.ts`: APK build preflight guardrails
 - `src/services/update-service.ts`: source update logic
+- `src/services/artifact-verification.ts`: shared trust signal evaluation
 - `src/adapters/*`: source-specific integrations
+
+### Source Map
+
+Current adapter coverage:
+
+- `github`: GitHub Releases API parsing and digest-aware trust mapping
+- `gitlab`: GitLab Releases API parsing and trust mapping
+- `fdroid`: `index-v1.json` parsing with normalized APK artifacts
+- `custom`: manifest-driven `releases[].artifacts[]` ingestion
+
+Reference: `docs/SOURCE_MAP.md`.
 
 ### Build Tooling
 
@@ -108,7 +120,7 @@ Release dry-run (`.github/workflows/release.yml`) enforces:
 
 ## Near-Term Architecture Priorities
 
-1. Replace scaffolded adapters (F-Droid/GitLab/custom) with production parsers.
+1. Add API integration coverage for normalized trust fields (`integrity`, `trustSignals`).
 2. Persist artifact metadata and storage URLs for real download lifecycle.
 3. Add end-to-end flow tests across app -> source -> update -> build.
 4. Introduce signed artifact verification and stricter release gates.
