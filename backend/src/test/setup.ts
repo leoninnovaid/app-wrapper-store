@@ -3,6 +3,7 @@ import os from 'os';
 import path from 'path';
 
 process.env.NODE_ENV = 'test';
+process.env.BUILD_COMPLETION_DELAY_MS = '25';
 
 const testDbDirectory = path.resolve(os.tmpdir(), 'app-wrapper-store-tests');
 const testDbFilename = `test-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.sqlite`;

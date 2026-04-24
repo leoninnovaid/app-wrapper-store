@@ -15,6 +15,7 @@ dotenv.config();
 
 const repository = new SqliteStoreRepository();
 const PORT = Number(process.env.PORT ?? 3000);
+const BUILD_COMPLETION_DELAY_MS = Number(process.env.BUILD_COMPLETION_DELAY_MS ?? 5000);
 
 function isValidHttpUrl(value: string): boolean {
   try {
@@ -160,7 +161,7 @@ async function simulateBuildCompletion(build: Build, traceId: string): Promise<v
         error: error instanceof Error ? error.message : 'unknown',
       });
     }
-  }, 5000);
+  }, BUILD_COMPLETION_DELAY_MS);
 }
 
 async function buildSourceValidation(sourceAdapter: SourceAdapter, sourceUrl: string): Promise<{ valid: boolean; reason?: string; normalizedUrl: string; metadata?: unknown; releaseCount?: number; }> {

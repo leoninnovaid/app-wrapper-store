@@ -195,3 +195,30 @@ Each entry should stay concise and include:
 **Next actions**
 
 1. Continue with Q5 end-to-end lifecycle coverage.
+
+---
+
+## 2026-04-24 (Q5 initial lifecycle smoke)
+
+**Focus:** Land the first automated `app -> source -> update -> build -> wrapper validation` path
+
+**Outcomes**
+
+- Restored configurable build completion delay for test/runtime parity and set test delay to a deterministic low value.
+- Added `backend/src/test/lifecycle.integration.test.ts` to cover:
+  - app creation
+  - source attachment
+  - update check
+  - build trigger and completion
+  - build log retrieval
+  - wrapper validation script execution
+- Kept the existing build-concurrency guard test stable while enabling fast lifecycle completion in test runs.
+
+**Verification**
+
+- Backend build passed: `npm run build`
+- Backend tests passed: `npm run test` (7 files, 27 tests)
+
+**Next actions**
+
+1. Expand Q5 from backend/wrapper smoke into browser/frontend-driven lifecycle coverage and failure paths.

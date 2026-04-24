@@ -152,10 +152,10 @@ This document defines repeatable user journeys and test scenarios for the App Wr
 | S5 | Build concurrency | Integration | Yes | `CONFLICT` contract |
 | S6 | Frontend error rendering | Unit | Yes | Store + error components |
 | S7 | Cross-source update payload shape | Integration | No (next) | Add API payload assertions for trust fields |
-| S8 | Full UI end-to-end lifecycle | E2E | No (next) | Candidate for Playwright/Cypress |
+| S8 | Full UI end-to-end lifecycle | E2E | In Progress | Backend + wrapper smoke landed; browser automation still next |
 
 ## Recommended next additions
 
 1. Add API integration assertions for artifact `integrity` and `trustSignals` fields.
 2. Add malformed source fixtures (invalid timestamps/checksums) for adapter hardening.
-3. Add browser E2E coverage for J8 lifecycle.
+3. Add browser E2E coverage for J8 lifecycle on top of the backend/wrapper smoke path.
