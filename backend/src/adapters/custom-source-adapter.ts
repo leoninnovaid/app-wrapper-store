@@ -3,6 +3,7 @@ import { ApiError } from '../errors/api-error';
 import { evaluateArtifactVerification } from '../services/artifact-verification';
 import { Platform, ReleaseArtifact, SourceMetadata, SourceRelease } from '../types/domain';
 import { ArtifactVerificationContext, SourceAdapter, SourceValidationResult, VerifyArtifactResult } from './source-adapter';
+import { normalizePublishedAt, parseChecksumMetadata, parsePublishedAtTimestamp } from '../utils/source-normalization';
 
 interface CustomManifestArtifact {
   name: string;
@@ -98,7 +99,7 @@ export class CustomSourceAdapter implements SourceAdapter {
     const releases = manifest.releases
       .filter((release) => release.version && Array.isArray(release.artifacts))
       .map((release) => this.mapRelease(release))
-      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+      .sort((a, b) => parsePublishedAtTimestamp(b.publishedAt) - parsePublishedAtTimestamp(a.publishedAt));
 
     return releases;
   }
@@ -146,7 +147,7 @@ export class CustomSourceAdapter implements SourceAdapter {
 
   private mapRelease(release: CustomManifestRelease): SourceRelease {
     const tag = release.tag || release.version;
-    const publishedAt = this.normalizePublishedAt(release.publishedAt);
+    const publishedAt = normalizePublishedAt(release.publishedAt);
     const artifacts = release.artifacts
       .filter((artifact) => artifact.name && artifact.url)
       .map((artifact) => this.mapArtifact(artifact));
@@ -161,7 +162,11 @@ export class CustomSourceAdapter implements SourceAdapter {
   }
 
   private mapArtifact(artifact: CustomManifestArtifact): ReleaseArtifact {
-    const checksum = artifact.checksum?.trim() || artifact.integrity?.value?.trim();
+    const checksumMetadata = parseChecksumMetadata(
+      artifact.integrity?.value ?? artifact.checksum,
+      artifact.integrity?.algorithm,
+      'custom-manifest',
+    );
     const inferredType = artifact.type || this.inferTypeFromName(artifact.name);
     const inferredPlatform = artifact.platform || this.inferPlatform(inferredType);
 
@@ -171,16 +176,10 @@ export class CustomSourceAdapter implements SourceAdapter {
       platform: inferredPlatform,
       url: artifact.url,
       size: artifact.size ?? 0,
-      checksum: checksum || undefined,
-      integrity: checksum
-        ? {
-            algorithm: artifact.integrity?.algorithm,
-            value: checksum,
-            source: 'custom-manifest',
-          }
-        : undefined,
+      checksum: checksumMetadata.checksum,
+      integrity: checksumMetadata.integrity,
       verificationStatus: 'unverified',
-      reason: checksum ? undefined : 'No checksum provided by source',
+      reason: checksumMetadata.checksum ? undefined : 'No valid checksum provided by source',
     };
   }
 
@@ -211,15 +210,6 @@ export class CustomSourceAdapter implements SourceAdapter {
     }
 
     return 'any';
-  }
-
-  private normalizePublishedAt(value: string): string {
-    const parsed = Date.parse(value);
-    if (Number.isNaN(parsed)) {
-      return new Date(0).toISOString();
-    }
-
-    return new Date(parsed).toISOString();
   }
 
   private prioritizeArtifacts(artifacts: ReleaseArtifact[], platform: Platform): ReleaseArtifact[] {

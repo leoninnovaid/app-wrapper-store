@@ -69,4 +69,34 @@ describe('CustomSourceAdapter', () => {
       ],
     });
   });
+
+  it('normalizes invalid publishedAt values and rejects malformed checksum metadata', async () => {
+    const adapter = new CustomSourceAdapter();
+    mockClientGet(adapter, async () => ({
+      data: {
+        title: 'Example Custom Source',
+        releases: [
+          {
+            version: 'v3.0.0',
+            publishedAt: 'definitely-not-a-date',
+            artifacts: [
+              {
+                name: 'example-v3.0.0.apk',
+                url: 'https://cdn.example.com/example-v3.0.0.apk',
+                checksum: 'sha256:',
+              },
+            ],
+          },
+        ],
+      },
+    }));
+
+    const releases = await adapter.listReleases('https://cdn.example.com/releases.json');
+    expect(releases[0].publishedAt).toBe(new Date(0).toISOString());
+    expect(releases[0].artifacts[0]).toMatchObject({
+      checksum: undefined,
+      integrity: undefined,
+      reason: 'No valid checksum provided by source',
+    });
+  });
 });

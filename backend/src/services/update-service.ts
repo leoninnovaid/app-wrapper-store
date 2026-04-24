@@ -1,5 +1,6 @@
 import { AppConfig, AppSource, Platform, ReleaseArtifact, SourceRelease, UpdateCheckResult } from '../types/domain';
 import { getSourceAdapter } from './source-registry';
+import { parsePublishedAtTimestamp } from '../utils/source-normalization';
 
 interface Candidate {
   source: AppSource;
@@ -8,7 +9,9 @@ interface Candidate {
 }
 
 function selectNewestCandidate(candidates: Candidate[]): Candidate {
-  const sorted = [...candidates].sort((a, b) => Date.parse(b.release.publishedAt) - Date.parse(a.release.publishedAt));
+  const sorted = [...candidates].sort(
+    (a, b) => parsePublishedAtTimestamp(b.release.publishedAt) - parsePublishedAtTimestamp(a.release.publishedAt),
+  );
   return sorted[0];
 }
 
@@ -36,7 +39,9 @@ export async function checkForUpdates(app: AppConfig, sources: AppSource[], plat
 
   for (const source of sources) {
     const adapter = getSourceAdapter(source.sourceType);
-    const releases = await adapter.listReleases(source.sourceUrl);
+    const releases = (await adapter.listReleases(source.sourceUrl)).sort(
+      (a, b) => parsePublishedAtTimestamp(b.publishedAt) - parsePublishedAtTimestamp(a.publishedAt),
+    );
 
     if (releases.length === 0) {
       blockedReasons.push(`${source.sourceType}: no releases found`);

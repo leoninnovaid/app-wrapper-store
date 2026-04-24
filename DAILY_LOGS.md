@@ -171,3 +171,27 @@ Each entry should stay concise and include:
 **Next actions**
 
 1. Continue with Q8 adapter edge-case hardening or Q5 end-to-end lifecycle coverage.
+
+---
+
+## 2026-04-24 (Q8 completion)
+
+**Focus:** Adapter trust parsing hardening for malformed timestamps and checksums
+
+**Outcomes**
+
+- Added shared normalization helpers in `backend/src/utils/source-normalization.ts` for:
+  - invalid/missing published timestamps
+  - checksum and prefixed digest parsing
+- Applied normalization across GitHub, GitLab, F-Droid, and custom source adapters.
+- Hardened `backend/src/services/update-service.ts` so update selection re-sorts releases deterministically instead of trusting upstream adapter order.
+- Added backend coverage for malformed digest strings, invalid timestamps, and deterministic candidate selection.
+
+**Verification**
+
+- Backend build passed: `npm run build`
+- Backend tests passed: `npm run test` (6 files, 26 tests)
+
+**Next actions**
+
+1. Continue with Q5 end-to-end lifecycle coverage.

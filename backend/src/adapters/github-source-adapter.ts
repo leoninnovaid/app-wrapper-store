@@ -3,6 +3,7 @@ import { ApiError } from '../errors/api-error';
 import { Platform, ReleaseArtifact, SourceMetadata, SourceRelease } from '../types/domain';
 import { ArtifactVerificationContext, SourceAdapter, SourceValidationResult, VerifyArtifactResult } from './source-adapter';
 import { evaluateArtifactVerification } from '../services/artifact-verification';
+import { normalizePublishedAt, parseChecksumMetadata, parsePublishedAtTimestamp } from '../utils/source-normalization';
 
 interface GitHubRepoRef {
   owner: string;
@@ -106,12 +107,12 @@ export class GitHubSourceAdapter implements SourceAdapter {
       const releases = response.data.map((release) => ({
         version: release.tag_name || release.name || 'unknown',
         tag: release.tag_name || release.name || 'unknown',
-        publishedAt: release.published_at || new Date(0).toISOString(),
+        publishedAt: normalizePublishedAt(release.published_at),
         notes: release.body,
         artifacts: release.assets.map((asset) => this.mapArtifact(asset)),
       }));
 
-      return releases.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+      return releases.sort((a, b) => parsePublishedAtTimestamp(b.publishedAt) - parsePublishedAtTimestamp(a.publishedAt));
     } catch (error) {
       throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch releases from GitHub', {
         sourceUrl: ref.normalizedUrl,
@@ -189,8 +190,7 @@ export class GitHubSourceAdapter implements SourceAdapter {
       platform = 'ios';
     }
 
-    const digest = asset.digest?.trim();
-    const integrity = digest ? this.parseIntegrity(digest) : undefined;
+    const digestMetadata = parseChecksumMetadata(asset.digest, undefined, 'github-release-asset-digest');
 
     return {
       name: asset.name,
@@ -198,21 +198,10 @@ export class GitHubSourceAdapter implements SourceAdapter {
       platform,
       url: asset.browser_download_url,
       size: asset.size,
-      checksum: integrity?.value ?? (digest || undefined),
-      integrity,
+      checksum: digestMetadata.checksum,
+      integrity: digestMetadata.integrity,
       verificationStatus: 'unverified',
-      reason: digest ? undefined : 'No checksum provided by source',
-    };
-  }
-
-  private parseIntegrity(digest: string): ReleaseArtifact['integrity'] {
-    const [algorithm, ...valueParts] = digest.split(':');
-    const value = valueParts.join(':').trim();
-
-    return {
-      algorithm: value ? algorithm.trim() : undefined,
-      value: value || digest.trim(),
-      source: 'github-release-asset-digest',
+      reason: digestMetadata.checksum ? undefined : 'No valid checksum provided by source',
     };
   }
 

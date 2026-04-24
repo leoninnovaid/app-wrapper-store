@@ -160,4 +160,46 @@ describe('checkForUpdates', () => {
       verificationStatus: 'verified',
     });
   });
+
+  it('ignores malformed release timestamps when selecting the newest valid candidate', async () => {
+    vi.spyOn(githubAdapter, 'listReleases').mockResolvedValue([
+      {
+        version: 'v9.9.9',
+        tag: 'v9.9.9',
+        publishedAt: 'not-a-date',
+        artifacts: [
+          {
+            name: 'example-v9.9.9.apk',
+            type: 'apk',
+            platform: 'android',
+            url: 'https://example.com/example-v9.9.9.apk',
+            size: 42,
+            checksum: 'abc12345',
+            verificationStatus: 'unverified',
+          },
+        ],
+      },
+      {
+        version: 'v1.2.3',
+        tag: 'v1.2.3',
+        publishedAt: '2026-04-10T00:00:00.000Z',
+        artifacts: [
+          {
+            name: 'example-v1.2.3.apk',
+            type: 'apk',
+            platform: 'android',
+            url: 'https://example.com/example-v1.2.3.apk',
+            size: 42,
+            checksum: 'def67890',
+            verificationStatus: 'unverified',
+          },
+        ],
+      },
+    ]);
+
+    const result = await checkForUpdates(appBase, [githubSource], 'android');
+
+    expect(result.status).toBe('update_available');
+    expect(result.release?.tag).toBe('v1.2.3');
+  });
 });

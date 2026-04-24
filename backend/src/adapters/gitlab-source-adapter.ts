@@ -3,6 +3,7 @@ import { ApiError } from '../errors/api-error';
 import { evaluateArtifactVerification } from '../services/artifact-verification';
 import { Platform, ReleaseArtifact, SourceMetadata, SourceRelease } from '../types/domain';
 import { ArtifactVerificationContext, SourceAdapter, SourceValidationResult, VerifyArtifactResult } from './source-adapter';
+import { normalizePublishedAt, parsePublishedAtTimestamp } from '../utils/source-normalization';
 
 interface GitLabProjectRef {
   apiBaseUrl: string;
@@ -119,13 +120,13 @@ export class GitLabSourceAdapter implements SourceAdapter {
         return {
           version,
           tag,
-          publishedAt: release.released_at || new Date(0).toISOString(),
+          publishedAt: normalizePublishedAt(release.released_at),
           notes: release.description,
           artifacts: links.map((link) => this.mapArtifact(link)),
         };
       });
 
-      return releases.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+      return releases.sort((a, b) => parsePublishedAtTimestamp(b.publishedAt) - parsePublishedAtTimestamp(a.publishedAt));
     } catch (error) {
       throw new ApiError(502, 'NETWORK_ERROR', 'Failed to fetch releases from GitLab', {
         sourceUrl: ref.normalizedUrl,

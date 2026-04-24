@@ -62,4 +62,36 @@ describe('FdroidSourceAdapter', () => {
       ],
     });
   });
+
+  it('falls back to epoch timestamp and drops malformed checksums', async () => {
+    const adapter = new FdroidSourceAdapter();
+    mockClientGet(adapter, async () => ({
+      data: {
+        repo: {
+          name: 'F-Droid Repo',
+          address: 'https://f-droid.org/repo',
+        },
+        packages: {
+          'org.example.app': [
+            {
+              packageName: 'org.example.app',
+              versionName: '1.2.3',
+              added: Number.NaN,
+              apkName: 'org.example.app_123.apk',
+              hash: 'sha256:',
+            },
+          ],
+        },
+      },
+    }));
+
+    const releases = await adapter.listReleases('https://f-droid.org');
+
+    expect(releases[0].publishedAt).toBe(new Date(0).toISOString());
+    expect(releases[0].artifacts[0]).toMatchObject({
+      checksum: undefined,
+      integrity: undefined,
+      reason: 'No valid checksum provided by source',
+    });
+  });
 });

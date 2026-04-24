@@ -53,6 +53,7 @@ Key modules:
 - `src/services/build-readiness.ts`: APK build preflight guardrails
 - `src/services/update-service.ts`: source update logic
 - `src/services/artifact-verification.ts`: shared trust signal evaluation
+- `src/utils/source-normalization.ts`: shared timestamp/checksum normalization for messy source feeds
 - `src/adapters/*`: source-specific integrations
 
 ### Source Map
@@ -138,4 +139,4 @@ That document maps responsibilities across:
 2. Introduce signed artifact verification and stricter release gates.
 3. Expand wrapper-template diagnostics into automated device/simulator regression runs.
 4. Persist wrapper diagnostic sessions and correlate them to build records.
-5. Enforce policy and adapter edge-case coverage deeper in CI.
+5. Reduce remaining frontend/backend test warning noise while keeping suites deterministic.

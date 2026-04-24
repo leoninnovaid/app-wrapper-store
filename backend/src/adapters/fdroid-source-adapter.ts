@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Platform, ReleaseArtifact, SourceMetadata, SourceRelease } from '../types/domain';
 import { evaluateArtifactVerification } from '../services/artifact-verification';
 import { ArtifactVerificationContext, SourceAdapter, SourceValidationResult, VerifyArtifactResult } from './source-adapter';
+import { normalizeUnixTimestamp, parseChecksumMetadata, parsePublishedAtTimestamp } from '../utils/source-normalization';
 
 interface FdroidIndexV1PackageVersion {
   versionName?: string;
@@ -73,7 +74,7 @@ export class FdroidSourceAdapter implements SourceAdapter {
     const releases = packageVersions
       .filter((entry) => Boolean(entry.apkName))
       .map((entry) => this.mapRelease(entry, index, normalizedUrl))
-      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+      .sort((a, b) => parsePublishedAtTimestamp(b.publishedAt) - parsePublishedAtTimestamp(a.publishedAt));
 
     return releases;
   }
@@ -139,9 +140,9 @@ export class FdroidSourceAdapter implements SourceAdapter {
   private mapRelease(version: FdroidIndexV1PackageVersion, index: FdroidIndexV1, baseUrl: string): SourceRelease {
     const versionName = version.versionName || `version-${version.versionCode ?? 'unknown'}`;
     const tag = versionName;
-    const publishedAt = this.toIsoTimestamp(version.added);
+    const publishedAt = normalizeUnixTimestamp(version.added);
     const artifactUrl = this.resolveArtifactUrl(baseUrl, index, version.apkName || '');
-    const checksum = version.hash?.trim();
+    const checksumMetadata = parseChecksumMetadata(version.hash, 'sha256', 'fdroid-index-v1-hash');
 
     return {
       version: versionName,
@@ -154,16 +155,10 @@ export class FdroidSourceAdapter implements SourceAdapter {
           platform: 'android',
           url: artifactUrl,
           size: 0,
-          checksum: checksum || undefined,
-          integrity: checksum
-            ? {
-                algorithm: 'sha256',
-                value: checksum,
-                source: 'fdroid-index-v1-hash',
-              }
-            : undefined,
+          checksum: checksumMetadata.checksum,
+          integrity: checksumMetadata.integrity,
           verificationStatus: 'unverified',
-          reason: checksum ? undefined : 'No checksum provided by source',
+          reason: checksumMetadata.checksum ? undefined : 'No valid checksum provided by source',
         },
       ],
     };
@@ -180,14 +175,6 @@ export class FdroidSourceAdapter implements SourceAdapter {
     }
 
     return `${baseUrl}/repo/${apkName}`;
-  }
-
-  private toIsoTimestamp(timestampSeconds?: number): string {
-    if (!timestampSeconds || !Number.isFinite(timestampSeconds)) {
-      return new Date(0).toISOString();
-    }
-
-    return new Date(timestampSeconds * 1000).toISOString();
   }
 
   private prioritizeArtifacts(artifacts: ReleaseArtifact[], platform: Platform): ReleaseArtifact[] {

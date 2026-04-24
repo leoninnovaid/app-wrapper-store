@@ -85,4 +85,27 @@ describe('GitLabSourceAdapter', () => {
     expect(result.status).toBe('blocked');
     expect(String(result.reason)).toContain('distribution policy requirements');
   });
+
+  it('normalizes invalid GitLab release timestamps for deterministic sorting', async () => {
+    const adapter = new GitLabSourceAdapter();
+    mockClientGet(adapter, async () => ({
+      data: [
+        {
+          tag_name: 'v2.0.0',
+          released_at: 'not-a-date',
+          assets: { links: [] },
+        },
+        {
+          tag_name: 'v1.0.0',
+          released_at: '2026-04-14T00:00:00.000Z',
+          assets: { links: [] },
+        },
+      ],
+    }));
+
+    const releases = await adapter.listReleases('https://gitlab.com/group/subgroup/app');
+
+    expect(releases[0].tag).toBe('v1.0.0');
+    expect(releases[1].publishedAt).toBe(new Date(0).toISOString());
+  });
 });
