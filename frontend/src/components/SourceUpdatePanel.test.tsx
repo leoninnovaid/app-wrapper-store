@@ -101,7 +101,7 @@ describe('SourceUpdatePanel', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Attach to app' }));
     await waitFor(() => expect(screen.getByText('Attached sources')).toBeInTheDocument());
-    expect(screen.getByText(/Example Repo/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Example Repo/).length).toBeGreaterThanOrEqual(1);
 
     await userEvent.click(screen.getByRole('button', { name: 'Check Android updates' }));
     await waitFor(() => expect(screen.getByText('Update available')).toBeInTheDocument());

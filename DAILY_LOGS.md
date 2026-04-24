@@ -148,3 +148,26 @@ Each entry should stay concise and include:
 
 1. Restore/install frontend dependencies so lint, test, and build can run.
 2. Once frontend verification is green, continue with Q8 adapter edge-case hardening or Q5 end-to-end lifecycle coverage.
+
+---
+
+## 2026-04-24 (frontend verification follow-up)
+
+**Focus:** Close the Q3 verification loop after pushing to `main`
+
+**Outcomes**
+
+- Installed frontend dependencies in `frontend/` so local tool binaries are available again.
+- Fixed the new `SourceUpdatePanel` test assertion to avoid a false failure on duplicated visible metadata text.
+- Confirmed the Q3 frontend work is now validated in this environment.
+
+**Verification**
+
+- Frontend lint passed: `npm run lint`
+- Frontend tests passed: `npm run test` (5 files, 9 tests)
+- Frontend build passed: `npm run build`
+- Remaining output is limited to existing React Testing Library `act(...)` warnings in older component tests; they did not fail the suite.
+
+**Next actions**
+
+1. Continue with Q8 adapter edge-case hardening or Q5 end-to-end lifecycle coverage.
