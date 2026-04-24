@@ -92,6 +92,26 @@ export interface AppSource {
   createdAt: string;
 }
 
+export interface SourceValidationResult {
+  sourceType: AppSource['sourceType'];
+  sourceUrl: string;
+  metadata?: AppSource['metadata'];
+  releaseCount: number;
+}
+
+export interface ArtifactIntegrity {
+  algorithm?: string;
+  value: string;
+  source: string;
+}
+
+export interface ArtifactTrustSignals {
+  installable: boolean;
+  checksumPresent: boolean;
+  sourceMetadataCoherent: boolean;
+  policyCompatible: boolean;
+}
+
 export interface ReleaseArtifact {
   name: string;
   type: 'apk' | 'aab' | 'ipa' | 'other';
@@ -99,6 +119,8 @@ export interface ReleaseArtifact {
   url: string;
   size: number;
   checksum?: string;
+  integrity?: ArtifactIntegrity;
+  trustSignals?: ArtifactTrustSignals;
   verificationStatus: 'verified' | 'unverified' | 'blocked';
   reason?: string;
 }
@@ -141,7 +163,7 @@ export const buildService = {
 
 export const sourceService = {
   validate: (sourceType: AppSource['sourceType'], sourceUrl: string) =>
-    api.post('/sources/validate', { sourceType, sourceUrl }),
+    api.post<SourceValidationResult>('/sources/validate', { sourceType, sourceUrl }),
   attachToApp: (appId: string, sourceType: AppSource['sourceType'], sourceUrl: string) =>
     api.post<AppSource>(`/apps/${appId}/sources`, { sourceType, sourceUrl }),
 };

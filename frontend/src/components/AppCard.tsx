@@ -5,6 +5,7 @@ import { extractTargetId, UiError } from '../types/errors';
 import { evaluateApkReadiness } from '../utils/apk-readiness';
 import { toUiError } from '../utils/error-utils';
 import InlineError from './InlineError';
+import SourceUpdatePanel from './SourceUpdatePanel';
 
 interface AppCardProps {
   app: AppConfig;
@@ -171,6 +172,7 @@ export default function AppCard({ app, onRefresh }: AppCardProps) {
           <p>
             <strong>Build readiness:</strong> {readinessReport.ready ? 'Ready' : 'Blocked'}
           </p>
+          <SourceUpdatePanel app={app} />
         </div>
       )}
     </div>

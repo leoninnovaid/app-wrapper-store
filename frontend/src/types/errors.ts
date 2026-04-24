@@ -5,6 +5,7 @@
   | 'build-app'
   | 'delete-app'
   | 'source-validate'
+  | 'source-attach'
   | 'update-check'
   | 'release';
 

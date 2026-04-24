@@ -124,3 +124,27 @@ Each entry should stay concise and include:
 
 1. Push stabilization patch to `main` and watch `CI / backend` for one full green cycle.
 2. Continue with Q2 (artifact/log persistence) after CI confirms stability.
+
+---
+
+## 2026-04-24
+
+**Focus:** Q3 frontend source/update workflow
+
+**Outcomes**
+
+- Added per-app source/update UI in `frontend/src/components/SourceUpdatePanel.tsx`.
+- Users can now validate a source URL, attach the source to an app, run Android update checks, and inspect trust indicators (`verificationStatus`, `integrity`, `trustSignals`) directly from the app details surface.
+- Extended frontend state in `frontend/src/store/appStore.ts` to retain attached sources, validation results, and latest update-check payloads by app.
+- Expanded frontend API typing to cover validation results and artifact trust fields.
+- Added component coverage in `frontend/src/components/SourceUpdatePanel.test.tsx`.
+
+**Verification**
+
+- Source-level review completed for the new frontend flow and test wiring.
+- Automated frontend verification is currently blocked in this sandbox because local binaries for `eslint`, `vitest`, `tsc`, and `vite` are not available when running `npm run lint`, `npm run test`, and `npm run build`.
+
+**Next actions**
+
+1. Restore/install frontend dependencies so lint, test, and build can run.
+2. Once frontend verification is green, continue with Q8 adapter edge-case hardening or Q5 end-to-end lifecycle coverage.

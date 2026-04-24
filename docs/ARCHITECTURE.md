@@ -22,6 +22,8 @@ The backend is intentionally monolithic but split by clear contracts:
 Responsibilities:
 
 - Create and manage app definitions
+- Validate and attach release sources per app
+- Run update checks and inspect artifact trust state
 - Surface all backend errors in UI (global + inline)
 - Trigger and inspect build lifecycle
 - Collect packaging/readiness configuration
@@ -29,6 +31,7 @@ Responsibilities:
 Key modules:
 
 - `src/store/appStore.ts`: app + error state
+- `src/components/SourceUpdatePanel.tsx`: source validation, source attachment, and update trust inspection
 - `src/components/GlobalErrorBanner.tsx`
 - `src/components/InlineError.tsx`
 - `src/components/CreateAppForm.tsx`
@@ -131,8 +134,8 @@ That document maps responsibilities across:
 
 ## Near-Term Architecture Priorities
 
-1. Add API integration coverage for normalized trust fields (`integrity`, `trustSignals`).
-2. Persist artifact metadata and storage URLs for real download lifecycle.
-3. Add end-to-end flow tests across app -> source -> update -> build.
-4. Introduce signed artifact verification and stricter release gates.
-5. Expand wrapper-template diagnostics into automated device/simulator regression runs.
+1. Add end-to-end flow tests across app -> source -> update -> build.
+2. Introduce signed artifact verification and stricter release gates.
+3. Expand wrapper-template diagnostics into automated device/simulator regression runs.
+4. Persist wrapper diagnostic sessions and correlate them to build records.
+5. Enforce policy and adapter edge-case coverage deeper in CI.

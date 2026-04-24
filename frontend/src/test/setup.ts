@@ -10,6 +10,9 @@ afterEach(() => {
       apps: [],
       selectedApp: null,
       builds: new Map(),
+      appSources: new Map(),
+      sourceValidations: new Map(),
+      updateChecks: new Map(),
       loading: false,
       globalErrors: [],
       scopedErrors: {
@@ -19,6 +22,7 @@ afterEach(() => {
         'build-app': [],
         'delete-app': [],
         'source-validate': [],
+        'source-attach': [],
         'update-check': [],
         release: [],
       },
